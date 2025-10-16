@@ -9,8 +9,10 @@
 <html>
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Student Login - TutorLiveMentor</title>
     <link href="https://fonts.googleapis.com/css?family=Montserrat:700,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
         :root {
             --royal-blue: #274060;
@@ -147,6 +149,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            color: var(--royal-blue);
         }
 
         .glass-btn {
@@ -163,6 +166,10 @@
             border: 2px solid var(--slate);
             transition: all 0.3s ease;
             margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .glass-btn:hover {
@@ -173,7 +180,7 @@
             border: 2px solid var(--royal-blue);
         }
 
-        .validation-summary-errors {
+        .validation-summary {
             background: rgba(220, 53, 69, 0.1);
             border: 1px solid var(--error-red);
             border-radius: 8px;
@@ -209,6 +216,7 @@
             background: var(--warm-gold);
             color: var(--royal-blue);
             transform: translateY(-2px);
+            text-decoration: none;
         }
 
         .register-link {
@@ -225,6 +233,7 @@
 
         .register-link a:hover {
             color: var(--warm-gold);
+            text-decoration: none;
         }
 
         @@media (max-width: 768px) {
@@ -246,45 +255,46 @@
     </style>
 </head>
 <body>
-    <a href="@Url.Action("Index", "Student")" class="nav-link">← Back to Student</a>
+    <a href="@Url.Action("Index", "Student")" class="nav-link"><i class="fas fa-arrow-left"></i> Back to Student</a>
     
     <div class="glass-card">
         <img src="~/images/RGMCET.jpg" alt="RGMCET Logo" class="logo" />
-        <h2>Student Login</h2>
+        <h2><i class="fas fa-user-graduate"></i> Student Login</h2>
 
         @if (TempData["SuccessMessage"] != null)
         {
             <div class="success-message">
-                @TempData["SuccessMessage"]
+                <i class="fas fa-check-circle"></i> @TempData["SuccessMessage"]
             </div>
         }
 
-        @using (Html.BeginForm("Login", "Student", FormMethod.Post))
-        {
+        <form asp-action="Login" method="post">
             @if (!ViewData.ModelState.IsValid && ViewData.ModelState.ErrorCount > 0)
             {
-                @Html.ValidationSummary(true, "", new { @class = "validation-summary-errors" })
+                <div asp-validation-summary="All" class="validation-summary"></div>
             }
 
             <div class="form-group">
-                <label>Email Address</label>
-                @Html.TextBoxFor(m => m.Email, new { @required = "required", type = "email" })
-                @Html.ValidationMessageFor(m => m.Email)
+                <label><i class="fas fa-envelope"></i> Email Address:</label>
+                <input asp-for="Email" type="email" required />
+                <span asp-validation-for="Email" class="field-validation-error"></span>
             </div>
 
             <div class="form-group">
-                <label>Password</label>
+                <label><i class="fas fa-lock"></i> Password:</label>
                 <div class="password-container">
-                    @Html.PasswordFor(m => m.Password, new { @id = "password", @required = "required" })
+                    <input asp-for="Password" type="password" id="password" required />
                     <button type="button" class="password-toggle" onclick="togglePassword()">
-                        <span id="eye">👁️</span>
+                        <i class="fas fa-eye" id="eye"></i>
                     </button>
                 </div>
-                @Html.ValidationMessageFor(m => m.Password)
+                <span asp-validation-for="Password" class="field-validation-error"></span>
             </div>
 
-            <button type="submit" class="glass-btn">🔐 Login</button>
-        }
+            <button type="submit" class="glass-btn">
+                <i class="fas fa-sign-in-alt"></i> Login
+            </button>
+        </form>
 
         <div class="register-link">
             <p>Don't have an account? <a href="@Url.Action("Register", "Student")">Register here</a></p>
@@ -297,12 +307,20 @@
             var eye = document.getElementById("eye");
             if (pwd.type === "password") {
                 pwd.type = "text";
-                eye.textContent = "🙈";
+                eye.className = "fas fa-eye-slash";
             } else {
                 pwd.type = "password";
-                eye.textContent = "👁️";
+                eye.className = "fas fa-eye";
             }
         }
+
+        // Debug: Log form submission
+        document.querySelector('form').addEventListener('submit', function(e) {
+            console.log('Form submitted with:', {
+                email: document.querySelector('[name="Email"]').value,
+                password: document.querySelector('[name="Password"]').value ? 'provided' : 'empty'
+            });
+        });
     </script>
 </body>
 </html>

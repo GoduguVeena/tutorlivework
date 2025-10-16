@@ -1,0 +1,341 @@
+@{
+    ViewData["Title"] = "Login Diagnostics";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Login Diagnostics - TutorLiveMentor</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: rgba(255,255,255,0.1); 
+            padding: 30px; 
+            border-radius: 15px; 
+            backdrop-filter: blur(10px);
+        }
+        .test-section { 
+            background: rgba(255,255,255,0.1); 
+            margin: 15px 0; 
+            padding: 20px; 
+            border-radius: 10px; 
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .success { background: rgba(40, 167, 69, 0.3); border-color: #28a745; }
+        .error { background: rgba(220, 53, 69, 0.3); border-color: #dc3545; }
+        .info { background: rgba(23, 162, 184, 0.3); border-color: #17a2b8; }
+        button { 
+            background: linear-gradient(45deg, #667eea, #764ba2); 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            margin: 5px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        button:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .btn-success { background: linear-gradient(45deg, #28a745, #20c997); }
+        .btn-danger { background: linear-gradient(45deg, #dc3545, #e83e8c); }
+        input { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 8px 0; 
+            border: 1px solid rgba(255,255,255,0.3); 
+            border-radius: 8px; 
+            box-sizing: border-box;
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        input::placeholder { color: rgba(255,255,255,0.7); }
+        pre { 
+            background: rgba(0,0,0,0.3); 
+            padding: 15px; 
+            border-radius: 8px; 
+            overflow: auto; 
+            max-height: 300px;
+            white-space: pre-wrap;
+        }
+        h1, h2, h3 { text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .login-form {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>?? Login Diagnostics & Fix Tool</h1>
+        
+        <div class="test-section error">
+            <h3>?? Current Issue</h3>
+            <p><strong>Problem:</strong> Login forms stay on same page for both Student and Faculty</p>
+            <p><strong>Status:</strong> Simplified login code implemented - let's test it!</p>
+        </div>
+
+        <div class="test-section info">
+            <h3>Step 1: Test Basic Routing</h3>
+            <button onclick="testRouting()">?? Test if routing works</button>
+            <div id="routingResult"></div>
+        </div>
+
+        <div class="test-section info">
+            <h3>Step 2: Test Database Connection</h3>
+            <button onclick="testDatabase()">?? Test database & get student list</button>
+            <div id="databaseResult"></div>
+        </div>
+
+        <div class="test-section info">
+            <h3>Step 3: Quick Student Login Test</h3>
+            <div class="login-form">
+                <h4>?? Student Login</h4>
+                <input type="email" id="studentEmail" placeholder="Student Email (e.g., 23091a32d4@rgmcet.edu.in)">
+                <input type="password" id="studentPassword" placeholder="Student Password">
+                <button onclick="testStudentLogin()">?? Test Student Login</button>
+                <div id="studentResult"></div>
+            </div>
+        </div>
+
+        <div class="test-section info">
+            <h3>Step 4: Quick Faculty Login Test</h3>
+            <div class="login-form">
+                <h4>????? Faculty Login</h4>
+                <input type="email" id="facultyEmail" placeholder="Faculty Email">
+                <input type="password" id="facultyPassword" placeholder="Faculty Password">
+                <button onclick="testFacultyLogin()">????? Test Faculty Login</button>
+                <div id="facultyResult"></div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>Step 5: Direct Navigation</h3>
+            <button onclick="window.location.href='/Student/Login'" class="btn-success">?? Go to Student Login</button>
+            <button onclick="window.location.href='/Faculty/Login'" class="btn-success">?? Go to Faculty Login</button>
+            <button onclick="window.location.href='/Student/MainDashboard'" class="btn-danger">?? Student Dashboard</button>
+            <button onclick="window.location.href='/Faculty/MainDashboard'" class="btn-danger">?? Faculty Dashboard</button>
+        </div>
+    </div>
+
+    <script>
+        async function testRouting() {
+            const resultDiv = document.getElementById('routingResult');
+            resultDiv.innerHTML = '<p>? Testing routing...</p>';
+            
+            try {
+                const response = await fetch('/Student/TestRouting');
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>? Routing Works!</h4>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>? Routing Failed</h4>
+                        <p>Error: ${error.message}</p>
+                        <p>This means there's a fundamental server issue.</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testDatabase() {
+            const resultDiv = document.getElementById('databaseResult');
+            resultDiv.innerHTML = '<p>? Testing database...</p>';
+            
+            try {
+                const response = await fetch('/Student/SimpleDebug');
+                const data = await response.json();
+                
+                if (data.success) {
+                    let html = `
+                        <div class="success">
+                            <h4>? Database Connected!</h4>
+                            <p><strong>Students found:</strong> ${data.studentCount}</p>
+                            <h5>?? Available Students:</h5>
+                    `;
+                    
+                    if (data.students && data.students.length > 0) {
+                        html += '<ul>';
+                        data.students.forEach(student => {
+                            html += `
+                                <li>
+                                    <strong>${student.fullName}</strong> - ${student.email}
+                                    <button onclick="copyEmail('${student.email}', 'student')" style="margin-left: 10px; padding: 2px 8px; font-size: 12px;">Copy Email</button>
+                                </li>
+                            `;
+                        });
+                        html += '</ul>';
+                    }
+                    
+                    html += `<pre>Session ID: ${data.sessionId}</pre></div>`;
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>? Database Error</h4>
+                            <p>${data.message}</p>
+                            <pre>${data.error}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>? Request Failed</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function copyEmail(email, type) {
+            if (type === 'student') {
+                document.getElementById('studentEmail').value = email;
+            } else {
+                document.getElementById('facultyEmail').value = email;
+            }
+            alert(`? ${email} copied to ${type} login form!`);
+        }
+
+        async function testStudentLogin() {
+            const email = document.getElementById('studentEmail').value;
+            const password = document.getElementById('studentPassword').value;
+            const resultDiv = document.getElementById('studentResult');
+            
+            if (!email || !password) {
+                resultDiv.innerHTML = '<div class="error">? Please enter both email and password</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p>? Testing student login...</p>';
+            
+            try {
+                const formData = new FormData();
+                formData.append('Email', email);
+                formData.append('Password', password);
+                
+                const response = await fetch('/Student/Login', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.redirected || response.url.includes('MainDashboard')) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>?? LOGIN SUCCESS!</h4>
+                            <p>? Student login worked! You were redirected to: ${response.url}</p>
+                            <button onclick="window.location.href='/Student/MainDashboard'" class="btn-success">
+                                ?? Go to Student Dashboard
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    const text = await response.text();
+                    if (text.includes('Invalid Email or Password')) {
+                        resultDiv.innerHTML = `
+                            <div class="error">
+                                <h4>? Invalid Credentials</h4>
+                                <p>The email or password is wrong. Try:</p>
+                                <ul>
+                                    <li>Check if email is exactly as shown in Step 2</li>
+                                    <li>Verify your password</li>
+                                    <li>Make sure student account exists</li>
+                                </ul>
+                            </div>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `
+                            <div class="error">
+                                <h4>? Login Failed</h4>
+                                <p>Stayed on login page. Check server console for errors.</p>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>? Request Failed</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testFacultyLogin() {
+            const email = document.getElementById('facultyEmail').value;
+            const password = document.getElementById('facultyPassword').value;
+            const resultDiv = document.getElementById('facultyResult');
+            
+            if (!email || !password) {
+                resultDiv.innerHTML = '<div class="error">? Please enter both email and password</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p>? Testing faculty login...</p>';
+            
+            try {
+                const formData = new FormData();
+                formData.append('Email', email);
+                formData.append('Password', password);
+                
+                const response = await fetch('/Faculty/Login', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.redirected || response.url.includes('MainDashboard')) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>?? FACULTY LOGIN SUCCESS!</h4>
+                            <p>? Faculty login worked! You were redirected to: ${response.url}</p>
+                            <button onclick="window.location.href='/Faculty/MainDashboard'" class="btn-success">
+                                ?? Go to Faculty Dashboard
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>? Faculty Login Failed</h4>
+                            <p>Invalid credentials or other error. Check if faculty account exists.</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>? Request Failed</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-test routing on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            testRouting();
+        });
+    </script>
+</body>
+</html>

@@ -4,63 +4,671 @@
     var facultySubjects = ViewBag.Subjects as List<TutorLiveMentor.Models.AssignedSubject>;
     var enrolledStudents = Model;
     string selectedSubject = ViewBag.SelectedSubject as string;
+    ViewData["Title"] = "Students Enrolled";
+    Layout = null;
 }
 
-<h2>Students Enrolled to You</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Students Enrolled - TutorLiveMentor</title>
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:700,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <style>
+        :root {
+            --royal-blue: #274060;
+            --warm-gold: #FFC857;
+            --cream: #F9FAF2;
+            --slate: #CED3DC;
+            --card-shadow: rgba(39,64,96,0.13);
+            --success-green: #28a745;
+            --error-red: #dc3545;
+            --faculty-purple: #6f42c1;
+        }
 
-<form method="get">
-    <label for="subject">Select subject:</label>
-    <select id="subject" name="subject" onchange="this.form.submit()" class="form-control" style="width: auto; display: inline-block;">
-        <option value="">--Select Subject--</option>
-        @if (facultySubjects != null)
-        {
-            foreach (var s in facultySubjects)
-            {
-                string sel = selectedSubject == s.Subject.Name ? "selected" : "";
-                @:<option value="@s.Subject.Name" @sel>@s.Year - @s.Subject.Name (@s.SelectedCount students)</option>
+        body {
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px 0;
+            font-family: 'Montserrat', Arial, sans-serif;
+            background: linear-gradient(rgba(249, 250, 242, 0.15), rgba(255, 200, 87, 0.10)),
+            url('@Url.Content("~/images/RGMCET-BACKGROUND.jpg")') center center/cover no-repeat fixed;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 0;
+            display: block;
+            background: linear-gradient(135deg, var(--cream) 60%, var(--warm-gold) 100%);
+            opacity: 0.20;
+            pointer-events: none;
+        }
+
+        .main-container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .nav-link {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(249,250,242,0.9);
+            color: var(--royal-blue);
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 2px solid var(--slate);
+            backdrop-filter: blur(8px);
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .nav-link:hover {
+            background: var(--warm-gold);
+            color: var(--royal-blue);
+            transform: translateY(-2px);
+            text-decoration: none;
+        }
+
+        /* Real-time Status & Notifications */
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px 15px;
+            border-radius: 15px;
+            font-weight: 600;
+            font-size: 0.9em;
+            z-index: 100;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .connection-status.connected {
+            background: rgba(40, 167, 69, 0.9);
+            color: white;
+        }
+
+        .connection-status.disconnected {
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse-dot 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #00ff00;
+            box-shadow: 0 0 6px #00ff00;
+        }
+
+        .status-dot.disconnected {
+            background: #ff0000;
+            box-shadow: 0 0 6px #ff0000;
+        }
+
+        .status-dot.connecting {
+            background: #ffaa00;
+            box-shadow: 0 0 6px #ffaa00;
+        }
+
+        @@keyframes pulse-dot {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .notification-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            width: 350px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .notification {
+            background: rgba(249,250,242,0.95);
+            border: 2px solid var(--slate);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 15px var(--card-shadow);
+            backdrop-filter: blur(8px);
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification.success {
+            border-color: var(--success-green);
+        }
+
+        .notification.info {
+            border-color: var(--faculty-purple);
+        }
+
+        .notification .close-btn {
+            float: right;
+            cursor: pointer;
+            color: #999;
+            font-weight: bold;
+        }
+
+        @@keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .dashboard-header {
+            background: rgba(249,250,242,0.92);
+            box-shadow: 0 8px 32px var(--card-shadow);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            backdrop-filter: blur(12px);
+            margin-bottom: 40px;
+            border: 2px solid var(--slate);
+        }
+
+        .dashboard-header h2 {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: var(--royal-blue);
+            margin: 0;
+            letter-spacing: 1.2px;
+        }
+
+        .filter-card {
+            background: rgba(249,250,242,0.95);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(12px);
+            border: 2px solid var(--slate);
+            box-shadow: 0 8px 32px var(--card-shadow);
+            margin-bottom: 30px;
+        }
+
+        .filter-form {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filter-label {
+            font-weight: 600;
+            color: var(--royal-blue);
+            font-size: 1.1em;
+        }
+
+        .form-control {
+            padding: 12px 15px;
+            border: 2px solid var(--slate);
+            border-radius: 10px;
+            font-size: 1em;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+            min-width: 300px;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--faculty-purple);
+            box-shadow: 0 0 0 3px rgba(111, 66, 193, 0.1);
+        }
+
+        .students-table-card {
+            background: rgba(249,250,242,0.95);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(12px);
+            border: 2px solid var(--slate);
+            box-shadow: 0 8px 32px var(--card-shadow);
+            overflow: hidden;
+        }
+
+        .table-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: var(--royal-blue);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .live-count {
+            background: linear-gradient(135deg, var(--faculty-purple), var(--warm-gold));
+            color: white;
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px var(--card-shadow);
+        }
+
+        .table thead {
+            background: linear-gradient(90deg, var(--faculty-purple), var(--royal-blue));
+            color: white;
+        }
+
+        .table th,
+        .table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--slate);
+        }
+
+        .table th {
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.9em;
+        }
+
+        .table tbody tr {
+            background: rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+        }
+
+        .table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.95);
+            transform: scale(1.01);
+        }
+
+        .table tbody tr:nth-child(even) {
+            background: rgba(249, 250, 242, 0.6);
+        }
+
+        /* New student highlight */
+        .table tbody tr.new-student {
+            background: rgba(40, 167, 69, 0.1);
+            animation: highlightNew 3s ease;
+        }
+
+        @@keyframes highlightNew {
+            0% { background: rgba(40, 167, 69, 0.3); transform: scale(1.02); }
+            100% { background: rgba(40, 167, 69, 0.1); transform: scale(1); }
+        }
+
+        .alert {
+            padding: 20px;
+            border-radius: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .alert-info {
+            background: rgba(23, 162, 184, 0.1);
+            border: 2px solid #17a2b8;
+            color: #0c5460;
+        }
+
+        .alert-secondary {
+            background: rgba(108, 117, 125, 0.1);
+            border: 2px solid #6c757d;
+            color: #383d41;
+        }
+
+        .alert h4 {
+            margin: 0 0 10px 0;
+            color: inherit;
+        }
+
+        .alert p {
+            margin: 0;
+        }
+
+        @@media (max-width: 768px) {
+            .main-container {
+                padding: 0 15px;
+            }
+
+            .dashboard-header {
+                padding: 30px 20px;
+            }
+
+            .dashboard-header h2 {
+                font-size: 2em;
+            }
+
+            .filter-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .form-control {
+                min-width: auto;
+                width: 100%;
+            }
+
+            .students-table-card {
+                padding: 20px 15px;
+                overflow-x: auto;
+            }
+
+            .table {
+                min-width: 800px;
+            }
+
+            .nav-link {
+                position: static;
+                display: inline-block;
+                margin-bottom: 20px;
+            }
+
+            .notification-container {
+                position: relative;
+                top: 0;
+                right: 0;
+                width: 100%;
+                margin-bottom: 20px;
+            }
+
+            .connection-status {
+                position: static;
+                display: inline-block;
+                margin-bottom: 10px;
             }
         }
-    </select>
-</form>
+    </style>
+</head>
+<body>
+    <a href="@Url.Action("MainDashboard", "Faculty")" class="nav-link"><i class="fas fa-home"></i> Back to Dashboard</a>
+    
+    <!-- Real-time Connection Status -->
+    <div class="connection-status disconnected" id="connectionStatus">
+        <span class="status-dot connecting"></span> Connecting...
+    </div>
 
-@if(enrolledStudents != null && enrolledStudents.Count > 0) {
-    <div style="margin-top: 24px;">
-        <h4>Students enrolled in @selectedSubject (@enrolledStudents.Count students)</h4>
-        <table class="table table-striped table-bordered">
-            <thead class="table-dark">
-                <tr>
-                    <th>S.No</th>
-                    <th>Name of the Student</th>
-                    <th>Registration Number</th>
-                    <th>Year</th>
-                    <th>Department</th>
-                    <th>Email</th>
-                </tr>
-            </thead>
-            <tbody>
-                @{int serialNo = 1;}
-                @foreach(var student in enrolledStudents) {
-                    <tr>
-                        <td>@serialNo</td>
-                        <td>@student.FullName</td>
-                        <td>@student.RegdNumber</td>
-                        <td>@student.Year</td>
-                        <td>@student.Department</td>
-                        <td>@student.Email</td>
-                    </tr>
-                    serialNo++;
+    <!-- Real-time Notifications -->
+    <div class="notification-container" id="notificationContainer"></div>
+
+    <div class="main-container">
+        <div class="dashboard-header">
+            <h2><i class="fas fa-user-graduate"></i> Students Enrolled</h2>
+        </div>
+
+        <div class="filter-card">
+            <form method="get" class="filter-form">
+                <label for="subject" class="filter-label"><i class="fas fa-filter"></i> Select Subject:</label>
+                <select id="subject" name="subject" onchange="this.form.submit()" class="form-control">
+                    <option value="">-- Select Subject --</option>
+                    @if (facultySubjects != null)
+                    {
+                        foreach (var s in facultySubjects)
+                        {
+                            <option value="@s.Subject.Name" selected="@(selectedSubject == s.Subject.Name)">
+                                @s.Year - @s.Subject.Name 
+                                (<span class="live-count-inline" data-subject-id="@s.AssignedSubjectId">@s.SelectedCount</span> students)
+                            </option>
+                        }
+                    }
+                </select>
+            </form>
+        </div>
+
+        @if(enrolledStudents != null && enrolledStudents.Count > 0) {
+            <div class="students-table-card">
+                <h4 class="table-title">
+                    <i class="fas fa-users"></i>
+                    Students enrolled in @selectedSubject 
+                    <span class="live-count" id="liveStudentCount">@enrolledStudents.Count</span>
+                </h4>
+                <div style="overflow-x: auto;">
+                    <table class="table" id="studentsTable">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-hashtag"></i> S.No</th>
+                                <th><i class="fas fa-user"></i> Student Name</th>
+                                <th><i class="fas fa-id-card"></i> Registration Number</th>
+                                <th><i class="fas fa-calendar"></i> Year</th>
+                                <th><i class="fas fa-building"></i> Department</th>
+                                <th><i class="fas fa-envelope"></i> Email</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{int serialNo = 1;}
+                            @foreach(var student in enrolledStudents) {
+                                <tr data-student-id="@student.Id">
+                                    <td>@serialNo</td>
+                                    <td>@student.FullName</td>
+                                    <td>@student.RegdNumber</td>
+                                    <td>@student.Year</td>
+                                    <td>@student.Department</td>
+                                    <td>@student.Email</td>
+                                </tr>
+                                serialNo++;
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        } else if(!string.IsNullOrEmpty(selectedSubject)) {
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle" style="font-size: 2em;"></i>
+                <div>
+                    <h4>No students enrolled for @selectedSubject</h4>
+                    <p>Students haven't enrolled in this subject yet, or they may have unenrolled.</p>
+                    <p><strong>Live Count: <span id="emptyLiveCount">0</span> students</strong></p>
+                </div>
+            </div>
+        } else {
+            <div class="alert alert-secondary">
+                <i class="fas fa-arrow-up" style="font-size: 2em;"></i>
+                <div>
+                    <p><strong>Select a subject above to view enrolled students.</strong></p>
+                    <p>You can see all students who have enrolled in your subjects with real-time updates.</p>
+                </div>
+            </div>
+        }
+    </div>
+
+    <script>
+        // 🚀 SIGNALR REAL-TIME CONNECTION
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/selectionHub")
+            .withAutomaticReconnect()
+            .build();
+
+        // Connection status management
+        const statusElement = document.getElementById('connectionStatus');
+        const selectedSubject = '@selectedSubject';
+        
+        connection.start().then(function () {
+            console.log('🚀 SignalR Connected for Faculty!');
+            statusElement.innerHTML = '<span class="status-dot connected"></span> Live Updates Active';
+            statusElement.className = 'connection-status connected';
+            
+        }).catch(function (err) {
+            console.error('❌ SignalR Connection Error:', err);
+            statusElement.innerHTML = '<span class="status-dot disconnected"></span> Offline Mode';
+            statusElement.className = 'connection-status disconnected';
+        });
+
+        connection.onreconnecting((error) => {
+            statusElement.innerHTML = '<span class="status-dot connecting"></span> Reconnecting...';
+            statusElement.className = 'connection-status disconnected';
+        });
+
+        connection.onreconnected((connectionId) => {
+            statusElement.innerHTML = '<span class="status-dot connected"></span> Live Updates Active';
+            statusElement.className = 'connection-status connected';
+            showNotification('Connection restored! Live updates are back online.', 'success');
+        });
+
+        // 🚀 REAL-TIME EVENT HANDLERS FOR FACULTY
+
+        // Student enrollment changes (specific to faculty)
+        connection.on("StudentEnrollmentChanged", function (data) {
+            console.log('👨‍🏫 Faculty: Student Enrollment Changed:', data);
+            
+            // Update live counts in dropdown
+            updateSubjectCount(data.AssignedSubjectId, data.NewCount);
+            
+            // If viewing this subject, update the display
+            if (selectedSubject && data.SubjectName === selectedSubject) {
+                updateCurrentSubjectDisplay(data);
+            }
+            
+            // Show notification
+            const actionColor = data.Action === 'Enrolled' ? 'success' : 'info';
+            showNotification(
+                `📚 ${data.SubjectName}: ${data.StudentName} ${data.Action.toLowerCase()}. 
+                 Current enrollment: ${data.NewCount} students`,
+                actionColor
+            );
+        });
+
+        // General subject selection updates
+        connection.on("SubjectSelectionUpdated", function (data) {
+            console.log('📈 Faculty: Subject Selection Update:', data);
+            updateSubjectCount(data.AssignedSubjectId, data.NewCount);
+        });
+
+        // General subject unenrollment updates  
+        connection.on("SubjectUnenrollmentUpdated", function (data) {
+            console.log('📉 Faculty: Subject Unenrollment Update:', data);
+            updateSubjectCount(data.AssignedSubjectId, data.NewCount);
+        });
+
+        // User activity notifications
+        connection.on("UserActivity", function (data) {
+            if (data.UserType === 'Student' && (data.Action === 'Logged In' || data.Action === 'Logged Out')) {
+                console.log('👤 Student Activity:', data);
+                showNotification(
+                    `👤 ${data.UserName} (Student) ${data.Action.toLowerCase()}`,
+                    'info'
+                );
+            }
+        });
+
+        // System notifications
+        connection.on("SystemNotification", function (data) {
+            showNotification(data.Message, data.Type);
+        });
+
+        // 🚀 HELPER FUNCTIONS
+
+        function updateSubjectCount(assignedSubjectId, newCount) {
+            // Update count in dropdown options
+            const countElement = document.querySelector(`[data-subject-id="${assignedSubjectId}"]`);
+            if (countElement) {
+                countElement.textContent = newCount;
+                countElement.style.animation = 'pulse 1s ease';
+                setTimeout(() => countElement.style.animation = '', 1000);
+            }
+        }
+
+        function updateCurrentSubjectDisplay(data) {
+            const liveCountElement = document.getElementById('liveStudentCount');
+            const emptyLiveCountElement = document.getElementById('emptyLiveCount');
+            
+            if (liveCountElement) {
+                liveCountElement.textContent = data.NewCount;
+                liveCountElement.style.animation = 'pulse 1s ease';
+                setTimeout(() => liveCountElement.style.animation = '', 1000);
+            }
+            
+            if (emptyLiveCountElement) {
+                emptyLiveCountElement.textContent = data.NewCount;
+            }
+
+            // If someone enrolled and we're on an empty page, suggest refresh
+            if (data.Action === 'Enrolled' && data.NewCount === 1) {
+                showNotification(
+                    '🔄 New student enrolled! Refresh the page to see the updated list.',
+                    'info'
+                );
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            
+            const icon = type === 'success' ? 'check-circle' : 
+                        type === 'warning' ? 'exclamation-triangle' : 
+                        type === 'error' ? 'times-circle' : 'info-circle';
+
+            notification.innerHTML = `
+                <span class="close-btn" onclick="this.parentElement.remove()">&times;</span>
+                <i class="fas fa-${icon}"></i> ${message}
+                <br><small>${new Date().toLocaleTimeString()}</small>
+            `;
+
+            container.appendChild(notification);
+
+            // Auto-remove after 8 seconds for faculty (longer than students)
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
                 }
-            </tbody>
-        </table>
-    </div>
-} else if(!string.IsNullOrEmpty(selectedSubject)) {
-    <div class="alert alert-info" style="margin-top: 24px;">
-        <h4>No students enrolled for @selectedSubject</h4>
-        <p>Students haven't enrolled in this subject yet, or they may have unenrolled.</p>
-    </div>
-} else {
-    <div class="alert alert-secondary" style="margin-top: 24px;">
-        <p><strong>Select a subject above to view enrolled students.</strong></p>
-        <p>You can see all students who have enrolled in your subjects.</p>
-    </div>
-}
+            }, 8000);
+
+            // Keep only the last 5 notifications
+            while (container.children.length > 5) {
+                container.removeChild(container.firstChild);
+            }
+        }
+
+        // Page unload cleanup
+        window.addEventListener('beforeunload', function() {
+            if (connection.state === signalR.HubConnectionState.Connected) {
+                connection.stop();
+            }
+        });
+
+        // Show initial connection notification for faculty
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                if (connection.state === signalR.HubConnectionState.Connected) {
+                    showNotification('🚀 Faculty dashboard connected! You\'ll receive real-time enrollment notifications.', 'success');
+                }
+            }, 2000);
+        });
+
+        // CSS for pulse animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @@keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.1); color: var(--success-green); }
+                100% { transform: scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

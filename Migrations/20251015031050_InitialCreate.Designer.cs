@@ -11,8 +11,8 @@ using TutorLiveMentor.Models;
 namespace TutorLiveMentor10.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251012061521_AddStudentEnrollmentTable")]
-    partial class AddStudentEnrollmentTable
+    [Migration("20251015031050_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

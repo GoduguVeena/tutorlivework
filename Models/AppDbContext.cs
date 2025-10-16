@@ -12,12 +12,14 @@ namespace TutorLiveMentor.Models
         public DbSet<Faculty> Faculties { get; set; }
         public DbSet<Subject> Subjects { get; set; }
         public DbSet<AssignedSubject> AssignedSubjects { get; set; }
-        public DbSet<StudentEnrollment> StudentEnrollments { get; set; } // Add this DbSet
+        public DbSet<StudentEnrollment> StudentEnrollments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
+            // Simple, clean configuration - let EF Core use conventions
+            
             // AssignedSubject -> Subject (many-to-one)
             modelBuilder.Entity<AssignedSubject>()
                 .HasOne(a => a.Subject)

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TutorLiveMentor.Models;
+using TutorLiveMentor.Services;
 using System.Linq;
 using System.Collections.Generic;
 
@@ -9,10 +10,12 @@ namespace TutorLiveMentor.Controllers
     public class FacultyController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly SignalRService _signalRService;
 
-        public FacultyController(AppDbContext context)
+        public FacultyController(AppDbContext context, SignalRService signalRService)
         {
             _context = context;
+            _signalRService = signalRService;
         }
 
         [HttpGet]
@@ -22,22 +25,56 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpPost]
-        public IActionResult Login(FacultyLoginViewModel model)
+        public async Task<IActionResult> Login(FacultyLoginViewModel model)
         {
-            if (!ModelState.IsValid) return View(model);
+            if (!ModelState.IsValid) 
+                return View(model);
 
-            var faculty = _context.Faculties.FirstOrDefault(f =>
-                f.Email == model.Email && f.Password == model.Password);
-
-            if (faculty == null)
+            try
             {
-                ModelState.AddModelError("", "Invalid credentials!");
+                var faculty = await _context.Faculties
+                    .FirstOrDefaultAsync(f => f.Email == model.Email && f.Password == model.Password);
+
+                if (faculty == null)
+                {
+                    ModelState.AddModelError("", "Invalid credentials!");
+                    return View(model);
+                }
+
+                // Clear any existing session
+                HttpContext.Session.Clear();
+
+                // Store faculty ID in session
+                HttpContext.Session.SetInt32("FacultyId", faculty.FacultyId);
+                HttpContext.Session.SetString("FacultyName", faculty.Name);
+
+                // Force session to be saved immediately
+                await HttpContext.Session.CommitAsync();
+
+                return RedirectToAction("MainDashboard");
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", $"Login error: {ex.Message}");
                 return View(model);
             }
+        }
 
-            // Store faculty ID in session
-            HttpContext.Session.SetInt32("FacultyId", faculty.FacultyId);
-            return RedirectToAction("Dashboard");
+        [HttpGet]
+        public IActionResult MainDashboard()
+        {
+            var facultyId = HttpContext.Session.GetInt32("FacultyId");
+            
+            if (facultyId == null)
+            {
+                TempData["ErrorMessage"] = "Please login to access the dashboard.";
+                return RedirectToAction("Login");
+            }
+
+            ViewBag.FacultyId = facultyId;
+            ViewBag.FacultyName = HttpContext.Session.GetString("FacultyName");
+            
+            return View();
         }
 
         [HttpGet]
@@ -75,7 +112,7 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpPost]
-        public IActionResult EditProfile(Faculty model)
+        public async Task<IActionResult> EditProfile(Faculty model)
         {
             var facultyId = HttpContext.Session.GetInt32("FacultyId");
             if (facultyId == null) return RedirectToAction("Login");
@@ -97,12 +134,16 @@ namespace TutorLiveMentor.Controllers
                 return BadRequest();
             }
 
-            // Update properties
+            // Update properties (removed Department since Faculty doesn't have it)
             faculty.Name = model.Name;
             faculty.Email = model.Email;
-            // Add other properties you want editable...
 
             _context.SaveChanges();
+
+            // 🚀 REAL-TIME NOTIFICATION: Notify system of profile update
+            await _signalRService.NotifyUserActivity(faculty.Name, "Faculty", "Profile Updated", $"Faculty member updated their profile information");
+
+            TempData["SuccessMessage"] = "Profile updated successfully!";
             return RedirectToAction("Profile");
         }
 
@@ -157,8 +198,19 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpGet]
-        public IActionResult Logout()
+        public async Task<IActionResult> Logout()
         {
+            var facultyId = HttpContext.Session.GetInt32("FacultyId");
+            if (facultyId != null)
+            {
+                var faculty = await _context.Faculties.FindAsync(facultyId.Value);
+                if (faculty != null)
+                {
+                    // 🚀 REAL-TIME NOTIFICATION: Notify system of faculty logout
+                    await _signalRService.NotifyUserActivity(faculty.Name, "Faculty", "Logged Out", "Faculty member logged out of the system");
+                }
+            }
+
             HttpContext.Session.Clear();
             return RedirectToAction("Login");
         }

@@ -26,6 +26,25 @@ namespace TutorLiveMentor10.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Students",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FullName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    RegdNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
+                    Year = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Department = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Password = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    SelectedSubject = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Students", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Subjects",
                 columns: table => new
                 {
@@ -47,7 +66,7 @@ namespace TutorLiveMentor10.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     FacultyId = table.Column<int>(type: "int", nullable: false),
                     SubjectId = table.Column<int>(type: "int", nullable: false),
-                    Department = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Department = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Year = table.Column<int>(type: "int", nullable: false),
                     SelectedCount = table.Column<int>(type: "int", nullable: false)
                 },
@@ -69,29 +88,28 @@ namespace TutorLiveMentor10.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Students",
+                name: "StudentEnrollments",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    FullName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    RegdNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
-                    Year = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Department = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Password = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    SelectedSubject = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    AssignedSubjectId = table.Column<int>(type: "int", nullable: true)
+                    StudentId = table.Column<int>(type: "int", nullable: false),
+                    AssignedSubjectId = table.Column<int>(type: "int", nullable: false),
+                    StudentEnrollmentId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Students", x => x.Id);
+                    table.PrimaryKey("PK_StudentEnrollments", x => new { x.StudentId, x.AssignedSubjectId });
                     table.ForeignKey(
-                        name: "FK_Students_AssignedSubjects_AssignedSubjectId",
+                        name: "FK_StudentEnrollments_AssignedSubjects_AssignedSubjectId",
                         column: x => x.AssignedSubjectId,
                         principalTable: "AssignedSubjects",
                         principalColumn: "AssignedSubjectId",
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_StudentEnrollments_Students_StudentId",
+                        column: x => x.StudentId,
+                        principalTable: "Students",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
@@ -100,29 +118,27 @@ namespace TutorLiveMentor10.Migrations
                 column: "FacultyId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_AssignedSubjects_SubjectId_Department_Year",
+                name: "IX_AssignedSubjects_SubjectId",
                 table: "AssignedSubjects",
-                columns: new[] { "SubjectId", "Department", "Year" });
+                column: "SubjectId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Students_AssignedSubjectId",
-                table: "Students",
+                name: "IX_StudentEnrollments_AssignedSubjectId",
+                table: "StudentEnrollments",
                 column: "AssignedSubjectId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Students_Department_Year",
-                table: "Students",
-                columns: new[] { "Department", "Year" });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "Students");
+                name: "StudentEnrollments");
 
             migrationBuilder.DropTable(
                 name: "AssignedSubjects");
+
+            migrationBuilder.DropTable(
+                name: "Students");
 
             migrationBuilder.DropTable(
                 name: "Faculties");

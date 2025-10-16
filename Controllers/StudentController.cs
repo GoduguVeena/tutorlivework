@@ -1,19 +1,22 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using TutorLiveMentor.Models;
+using TutorLiveMentor.Services;
 
 namespace TutorLiveMentor.Controllers
 {
     public class StudentController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly SignalRService _signalRService;
 
-        public StudentController(AppDbContext context)
+        public StudentController(AppDbContext context, SignalRService signalRService)
         {
             _context = context;
+            _signalRService = signalRService;
         }
 
         [HttpGet]
@@ -53,6 +56,9 @@ namespace TutorLiveMentor.Controllers
                 _context.Students.Add(student);
                 await _context.SaveChangesAsync();
 
+                // Notify system of new user registration
+                await _signalRService.NotifyUserActivity(student.FullName, "Student", "Registered", $"New student registered: {student.RegdNumber}");
+
                 TempData["SuccessMessage"] = "Registration successful! Please log in now.";
                 return RedirectToAction("Login");
             }
@@ -68,30 +74,60 @@ namespace TutorLiveMentor.Controllers
         [HttpPost]
         public async Task<IActionResult> Login(LoginViewModel model)
         {
+            // Simple, reliable login without complex debugging
             if (!ModelState.IsValid)
-                return View(model);
-
-            var student = await _context.Students.FirstOrDefaultAsync(s => s.Email == model.Email && s.Password == model.Password);
-            if (student == null)
             {
-                ModelState.AddModelError(string.Empty, "Invalid Email or Password.");
                 return View(model);
             }
 
-            // Store student ID in session to track login state
-            HttpContext.Session.SetInt32("StudentId", student.Id);
+            try
+            {
+                // Find student with matching credentials
+                var student = await _context.Students
+                    .FirstOrDefaultAsync(s => s.Email == model.Email && s.Password == model.Password);
 
-            return RedirectToAction("MainDashboard");
+                if (student == null)
+                {
+                    ModelState.AddModelError(string.Empty, "Invalid Email or Password.");
+                    return View(model);
+                }
+
+                // Clear any existing session
+                HttpContext.Session.Clear();
+
+                // Set session values
+                HttpContext.Session.SetInt32("StudentId", student.Id);
+                HttpContext.Session.SetString("StudentName", student.FullName);
+
+                // Force session to be saved immediately
+                await HttpContext.Session.CommitAsync();
+
+                // Simple redirect without SignalR to avoid complications
+                return RedirectToAction("MainDashboard", "Student");
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError(string.Empty, $"Login error: {ex.Message}");
+                return View(model);
+            }
         }
 
         [HttpGet]
         public IActionResult MainDashboard()
         {
-            // Protect this page from unauthorized access
-            if (HttpContext.Session.GetInt32("StudentId") == null)
+            // Simple session check
+            var studentId = HttpContext.Session.GetInt32("StudentId");
+            
+            if (studentId == null)
             {
+                TempData["ErrorMessage"] = "Please login to access the dashboard.";
                 return RedirectToAction("Login");
             }
+            
+            // If we get here, student is logged in
+            ViewBag.StudentId = studentId;
+            ViewBag.StudentName = HttpContext.Session.GetString("StudentName");
+            
             return View();
         }
 
@@ -161,9 +197,10 @@ namespace TutorLiveMentor.Controllers
                 return RedirectToAction("SelectSubject");
             }
 
-            if (assignedSubject.SelectedCount >= 60)
+            // CHANGED: Limit from 60 to 20 students for testing
+            if (assignedSubject.SelectedCount >= 20)
             {
-                TempData["ErrorMessage"] = "This subject is already full.";
+                TempData["ErrorMessage"] = "This subject is already full (maximum 20 students).";
                 return RedirectToAction("SelectSubject");
             }
 
@@ -184,6 +221,19 @@ namespace TutorLiveMentor.Controllers
 
             await _context.SaveChangesAsync();
 
+            // ?? REAL-TIME NOTIFICATION: Notify all connected users about the selection
+            await _signalRService.NotifySubjectSelection(assignedSubject, student);
+
+            // Check if subject is now full and notify availability change
+            if (assignedSubject.SelectedCount >= 20)
+            {
+                await _signalRService.NotifySubjectAvailability(
+                    assignedSubject.Subject.Name, 
+                    assignedSubject.Year, 
+                    assignedSubject.Department, 
+                    false);
+            }
+
             TempData["SuccessMessage"] = $"Successfully enrolled in {assignedSubject.Subject.Name} with {assignedSubject.Faculty.Name}.";
             return RedirectToAction("SelectSubject");
         }
@@ -201,6 +251,9 @@ namespace TutorLiveMentor.Controllers
                 .Include(s => s.Enrollments)
                     .ThenInclude(e => e.AssignedSubject)
                     .ThenInclude(a => a.Subject)
+                .Include(s => s.Enrollments)
+                    .ThenInclude(e => e.AssignedSubject)
+                    .ThenInclude(a => a.Faculty)
                 .FirstOrDefaultAsync(s => s.Id == studentId.Value);
 
             if (student == null)
@@ -217,11 +270,26 @@ namespace TutorLiveMentor.Controllers
 
             var assignedSubject = await _context.AssignedSubjects
                 .Include(a => a.Subject)
+                .Include(a => a.Faculty)
                 .FirstOrDefaultAsync(a => a.AssignedSubjectId == assignedSubjectId);
 
             if (assignedSubject != null)
             {
+                var wasFullBefore = assignedSubject.SelectedCount >= 20;
                 assignedSubject.SelectedCount = Math.Max(0, assignedSubject.SelectedCount - 1);
+
+                // ?? REAL-TIME NOTIFICATION: Notify all connected users about the unenrollment
+                await _signalRService.NotifySubjectUnenrollment(assignedSubject, student);
+
+                // If subject was full and now has space, notify availability change
+                if (wasFullBefore && assignedSubject.SelectedCount < 20)
+                {
+                    await _signalRService.NotifySubjectAvailability(
+                        assignedSubject.Subject.Name, 
+                        assignedSubject.Year, 
+                        assignedSubject.Department, 
+                        true);
+                }
             }
 
             _context.StudentEnrollments.Remove(enrollment);
@@ -282,6 +350,9 @@ namespace TutorLiveMentor.Controllers
 
                 await _context.SaveChangesAsync();
 
+                // Notify system of profile update
+                await _signalRService.NotifyUserActivity(studentToUpdate.FullName, "Student", "Profile Updated", $"Student updated their profile information");
+
                 TempData["SuccessMessage"] = "Profile updated!";
                 return RedirectToAction("Dashboard");
             }
@@ -289,8 +360,18 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpGet]
-        public IActionResult Logout()
+        public async Task<IActionResult> Logout()
         {
+            var studentId = HttpContext.Session.GetInt32("StudentId");
+            if (studentId != null)
+            {
+                var student = await _context.Students.FindAsync(studentId.Value);
+                if (student != null)
+                {
+                    await _signalRService.NotifyUserActivity(student.FullName, "Student", "Logged Out", "Student logged out of the system");
+                }
+            }
+
             HttpContext.Session.Clear();
             return RedirectToAction("Login");
         }
@@ -318,18 +399,18 @@ namespace TutorLiveMentor.Controllers
                 return NotFound();
             }
 
-            // Get all available subjects for the student's department and year
+            // Get all available subjects for the student's year
             var yearMap = new Dictionary<string, int> { { "I", 1 }, { "II", 2 }, { "III", 3 }, { "IV", 4 } };
             var studentYearKey = student.Year?.Replace(" Year", "")?.Trim() ?? "";
             
             var availableSubjects = new List<AssignedSubject>();
             if (yearMap.TryGetValue(studentYearKey, out int studentYear))
             {
-                // Get subjects that are not full
+                // CHANGED: Filter subjects that have less than 20 students (was 60)
                 availableSubjects = await _context.AssignedSubjects
                    .Include(a => a.Subject)
                    .Include(a => a.Faculty)
-                   .Where(a => a.Department == student.Department && a.Year == studentYear && a.SelectedCount < 60)
+                   .Where(a => a.Year == studentYear && a.SelectedCount < 20)
                    .ToListAsync();
 
                 // Filter out subjects where student has already enrolled
@@ -441,6 +522,234 @@ namespace TutorLiveMentor.Controllers
         {
             // Simple test view to check emoji display
             return View();
+        }
+
+        [HttpGet]
+        public IActionResult TestSession()
+        {
+            // Test session functionality
+            HttpContext.Session.SetString("TestKey", "TestValue");
+            var testValue = HttpContext.Session.GetString("TestKey");
+            
+            var debugInfo = new
+            {
+                SessionId = HttpContext.Session.Id,
+                TestValue = testValue,
+                StudentId = HttpContext.Session.GetInt32("StudentId"),
+                StudentIdString = HttpContext.Session.GetString("StudentId"),
+                SessionIsAvailable = HttpContext.Session.IsAvailable
+            };
+            
+            return Json(debugInfo);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> TestLogin()
+        {
+            // Test login with a known student (for debugging)
+            var student = await _context.Students.FirstOrDefaultAsync();
+            if (student != null)
+            {
+                HttpContext.Session.SetInt32("StudentId", student.Id);
+                HttpContext.Session.SetString("StudentId", student.Id.ToString());
+                await HttpContext.Session.CommitAsync();
+                
+                return Json(new { 
+                    Message = "Test login successful", 
+                    StudentId = student.Id, 
+                    StudentName = student.FullName,
+                    SessionId = HttpContext.Session.Id
+                });
+            }
+            
+            return Json(new { Message = "No students found in database" });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> DebugLogin()
+        {
+            try
+            {
+                // Test database connection
+                var studentCount = await _context.Students.CountAsync();
+                var sampleStudents = await _context.Students
+                    .Take(3)
+                    .Select(s => new { s.Id, s.FullName, s.Email })
+                    .ToListAsync();
+
+                // Test session
+                HttpContext.Session.SetString("DebugTest", "Working");
+                var sessionTest = HttpContext.Session.GetString("DebugTest");
+
+                var debugInfo = new
+                {
+                    DatabaseConnection = "Connected",
+                    TotalStudents = studentCount,
+                    SampleStudents = sampleStudents.Cast<object>().ToList(),
+                    SessionWorking = sessionTest == "Working",
+                    SessionId = HttpContext.Session.Id,
+                    CurrentStudentId = HttpContext.Session.GetInt32("StudentId"),
+                    Timestamp = DateTime.Now
+                };
+
+                return Json(debugInfo);
+            }
+            catch (Exception ex)
+            {
+                var errorInfo = new
+                {
+                    DatabaseConnection = $"Error: {ex.Message}",
+                    TotalStudents = 0,
+                    SampleStudents = new List<object>(),
+                    SessionWorking = false,
+                    SessionId = HttpContext.Session.Id,
+                    CurrentStudentId = HttpContext.Session.GetInt32("StudentId"),
+                    Timestamp = DateTime.Now,
+                    Error = ex.Message
+                };
+
+                return Json(errorInfo);
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> DebugCredentials()
+        {
+            try
+            {
+                // Get all students with their exact credentials (for debugging only)
+                var allStudents = await _context.Students
+                    .Select(s => new { 
+                        s.Id, 
+                        s.FullName, 
+                        s.Email, 
+                        PasswordLength = s.Password.Length,
+                        PasswordHash = s.Password.Substring(0, Math.Min(3, s.Password.Length)) + "***" // Show first 3 chars only for security
+                    })
+                    .ToListAsync();
+
+                var debugInfo = new
+                {
+                    TotalStudents = allStudents.Count,
+                    Students = allStudents,
+                    Message = "Use the exact email from this list to test login"
+                };
+
+                return Json(debugInfo);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { Error = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DebugTestLogin(string email, string password)
+        {
+            try
+            {
+                Console.WriteLine($"?? DEBUG TEST LOGIN: Email='{email}', Password='{password}'");
+
+                // Check if student exists with this exact email
+                var studentWithEmail = await _context.Students
+                    .Where(s => s.Email == email)
+                    .Select(s => new { s.Id, s.FullName, s.Email, PasswordLength = s.Password.Length })
+                    .FirstOrDefaultAsync();
+
+                if (studentWithEmail == null)
+                {
+                    Console.WriteLine($"? No student found with email: '{email}'");
+                    return Json(new { 
+                        Success = false, 
+                        Message = "No student found with that email",
+                        Email = email
+                    });
+                }
+
+                // Check password match
+                var studentWithCredentials = await _context.Students
+                    .FirstOrDefaultAsync(s => s.Email == email && s.Password == password);
+
+                if (studentWithCredentials == null)
+                {
+                    Console.WriteLine($"? Password mismatch for email: '{email}'");
+                    return Json(new { 
+                        Success = false, 
+                        Message = "Email found but password doesn't match",
+                        Email = email,
+                        StudentFound = studentWithEmail
+                    });
+                }
+
+                // SUCCESS - Now try to log in
+                Console.WriteLine($"? Credentials match! Logging in student: {studentWithCredentials.FullName}");
+
+                // Set session
+                HttpContext.Session.SetInt32("StudentId", studentWithCredentials.Id);
+                HttpContext.Session.SetString("StudentId", studentWithCredentials.Id.ToString());
+                await HttpContext.Session.CommitAsync();
+
+                // Verify session was set
+                var sessionCheck = HttpContext.Session.GetInt32("StudentId");
+                Console.WriteLine($"? Session set. StudentId in session: {sessionCheck}");
+
+                return Json(new { 
+                    Success = true, 
+                    Message = "Login successful!",
+                    StudentId = studentWithCredentials.Id,
+                    StudentName = studentWithCredentials.FullName,
+                    SessionId = HttpContext.Session.Id,
+                    RedirectUrl = Url.Action("MainDashboard", "Student")
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"? DEBUG TEST LOGIN ERROR: {ex.Message}");
+                return Json(new { 
+                    Success = false, 
+                    Message = ex.Message,
+                    Error = ex.ToString()
+                });
+            }
+        }
+
+        [HttpGet]
+        public IActionResult TestRouting()
+        {
+            return Json(new { 
+                Message = "? Routing works!", 
+                Controller = "Student", 
+                Action = "TestRouting",
+                Time = DateTime.Now,
+                SessionId = HttpContext.Session.Id
+            });
+        }
+
+        [HttpGet]  
+        public async Task<IActionResult> SimpleDebug()
+        {
+            try
+            {
+                var studentCount = await _context.Students.CountAsync();
+                var students = await _context.Students.Take(5).ToListAsync();
+                
+                return Json(new {
+                    Success = true,
+                    Message = "Database connected successfully",
+                    StudentCount = studentCount,
+                    Students = students.Select(s => new { s.Id, s.FullName, s.Email }).ToList(),
+                    SessionWorking = HttpContext.Session.IsAvailable,
+                    SessionId = HttpContext.Session.Id
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new {
+                    Success = false,
+                    Error = ex.Message,
+                    Message = "Database connection failed"
+                });
+            }
         }
     }
 

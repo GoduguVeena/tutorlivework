@@ -1,7 +1,5 @@
-@model TutorLiveMentor.Models.Faculty
-
 @{
-    ViewData["Title"] = "Faculty Dashboard";
+    ViewData["Title"] = "Faculty Main Dashboard";
     Layout = null;
 }
 
@@ -76,12 +74,6 @@
             letter-spacing: 1.2px;
         }
 
-        .welcome-text {
-            font-size: 1.2em;
-            color: #666;
-            margin-top: 10px;
-        }
-
         .cards-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -101,8 +93,6 @@
             transform: scale(1);
             position: relative;
             overflow: hidden;
-            text-decoration: none;
-            color: inherit;
         }
 
         .dashboard-card::before {
@@ -122,8 +112,6 @@
             transform: scale(0.95) translateY(-8px);
             box-shadow: 0 20px 60px rgba(39,64,96,0.25);
             border-color: var(--warm-gold);
-            text-decoration: none;
-            color: inherit;
         }
 
         .dashboard-card:hover::before {
@@ -165,15 +153,8 @@
         .card-text {
             color: #666;
             font-size: 1em;
-            margin-bottom: 15px;
-            line-height: 1.5;
-        }
-
-        .card-detail {
-            font-size: 0.9em;
-            color: var(--royal-blue);
-            font-weight: 600;
             margin-bottom: 25px;
+            line-height: 1.5;
         }
 
         .glass-btn {
@@ -273,32 +254,30 @@
     
     <div class="main-container">
         <div class="dashboard-header">
-            <h2>Welcome Dr. @Model.Name!</h2>
-            <div class="welcome-text">Faculty Dashboard</div>
+            <h2>Welcome, Faculty!</h2>
         </div>
 
         <div class="cards-container">
-            <a href="@Url.Action("Profile", "Faculty")" class="dashboard-card">
+            <div class="dashboard-card">
                 <div class="card-icon"><i class="fas fa-chalkboard-teacher"></i></div>
-                <h5 class="card-title">Profile</h5>
-                <div class="card-detail">@Model.Name</div>
-                <p class="card-text">@Model.Email</p>
-                <span class="glass-btn">View Profile</span>
-            </a>
+                <h5 class="card-title">Faculty Profile</h5>
+                <p class="card-text">View and manage your profile and personal details.</p>
+                <a asp-controller="Faculty" asp-action="Profile" class="glass-btn">View Profile</a>
+            </div>
 
-            <a href="@Url.Action("StudentsEnrolled", "Faculty")" class="dashboard-card">
+            <div class="dashboard-card">
                 <div class="card-icon"><i class="fas fa-user-graduate"></i></div>
                 <h5 class="card-title">Students Enrolled</h5>
-                <p class="card-text">View all students enrolled under your subjects</p>
-                <span class="glass-btn">View List</span>
-            </a>
+                <p class="card-text">View all students enrolled under your subjects.</p>
+                <a asp-controller="Faculty" asp-action="StudentsEnrolled" class="glass-btn">View Students</a>
+            </div>
 
-            <a href="@Url.Action("AssignedSubjects", "Faculty")" class="dashboard-card">
+            <div class="dashboard-card">
                 <div class="card-icon"><i class="fas fa-book-open"></i></div>
                 <h5 class="card-title">Assigned Subjects</h5>
-                <p class="card-text">Manage and view your assigned subjects for teaching</p>
-                <span class="glass-btn">View Subjects</span>
-            </a>
+                <p class="card-text">Manage and view your assigned subjects for teaching.</p>
+                <a asp-controller="Faculty" asp-action="AssignedSubjects" class="glass-btn">View Subjects</a>
+            </div>
         </div>
     </div>
 </body>

@@ -9,8 +9,10 @@
 <html>
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Faculty Login - TutorLiveMentor</title>
     <link href="https://fonts.googleapis.com/css?family=Montserrat:700,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
         :root {
             --royal-blue: #274060;
@@ -20,6 +22,7 @@
             --card-shadow: rgba(39,64,96,0.13);
             --success-green: #28a745;
             --error-red: #dc3545;
+            --faculty-purple: #6f42c1;
         }
 
         body {
@@ -107,8 +110,8 @@
 
         input[type="email"]:focus, input[type="password"]:focus, input[type="text"]:focus {
             outline: none;
-            border-color: var(--warm-gold);
-            box-shadow: 0 0 0 3px rgba(255, 200, 87, 0.2);
+            border-color: var(--faculty-purple);
+            box-shadow: 0 0 0 3px rgba(111, 66, 193, 0.2);
         }
 
         .password-container {
@@ -137,11 +140,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            color: var(--faculty-purple);
         }
 
         .glass-btn {
             width: 100%;
-            background: linear-gradient(90deg, var(--royal-blue) 74%, var(--warm-gold) 100%);
+            background: linear-gradient(90deg, var(--faculty-purple) 74%, var(--warm-gold) 100%);
             color: #fff;
             border: none;
             border-radius: 15px;
@@ -153,14 +157,18 @@
             border: 2px solid var(--slate);
             transition: all 0.3s ease;
             margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .glass-btn:hover {
-            box-shadow: 0 16px 32px var(--warm-gold);
-            background: linear-gradient(90deg, var(--warm-gold) 62%, var(--royal-blue) 100%);
+            box-shadow: 0 16px 32px rgba(111, 66, 193, 0.4);
+            background: linear-gradient(90deg, var(--warm-gold) 62%, var(--faculty-purple) 100%);
             color: var(--royal-blue);
             transform: translateY(-3px);
-            border: 2px solid var(--royal-blue);
+            border: 2px solid var(--faculty-purple);
         }
 
         .validation-summary {
@@ -199,11 +207,13 @@
             background: var(--warm-gold);
             color: var(--royal-blue);
             transform: translateY(-2px);
+            text-decoration: none;
         }
 
         .faculty-icon {
-            font-size: 2em;
+            font-size: 3em;
             margin-bottom: 10px;
+            color: var(--faculty-purple);
         }
 
         @@media (max-width: 768px) {
@@ -225,11 +235,11 @@
     </style>
 </head>
 <body>
-    <a href="@Url.Action("Index", "Home")" class="nav-link">← Back to Home</a>
+    <a href="@Url.Action("Index", "Home")" class="nav-link"><i class="fas fa-arrow-left"></i> Back to Home</a>
     
     <div class="glass-card">
         <img src="~/images/RGMCET.jpg" alt="RGMCET Logo" class="logo" />
-        <div class="faculty-icon">🧑‍🏫</div>
+        <div class="faculty-icon"><i class="fas fa-chalkboard-teacher"></i></div>
         <h2>Faculty Login</h2>
 
         <form asp-action="Login" method="post">
@@ -239,23 +249,25 @@
             }
             
             <div class="form-group">
-                <label>Email Address:</label>
+                <label><i class="fas fa-envelope"></i> Email Address:</label>
                 <input asp-for="Email" type="email" required />
                 <span asp-validation-for="Email" class="field-validation-error"></span>
             </div>
 
             <div class="form-group">
-                <label>Password:</label>
+                <label><i class="fas fa-lock"></i> Password:</label>
                 <div class="password-container">
                     <input asp-for="Password" type="password" id="password" required />
                     <button type="button" class="password-toggle" onclick="togglePassword()">
-                        <span id="eye">👁️</span>
+                        <i class="fas fa-eye" id="eye"></i>
                     </button>
                 </div>
                 <span asp-validation-for="Password" class="field-validation-error"></span>
             </div>
 
-            <button type="submit" class="glass-btn">🔐 Login as Faculty</button>
+            <button type="submit" class="glass-btn">
+                <i class="fas fa-sign-in-alt"></i> Login as Faculty
+            </button>
         </form>
     </div>
 
@@ -265,10 +277,10 @@
             var eye = document.getElementById("eye");
             if (pwd.type === "password") {
                 pwd.type = "text";
-                eye.textContent = "🙈";
+                eye.className = "fas fa-eye-slash";
             } else {
                 pwd.type = "password";
-                eye.textContent = "👁️";
+                eye.className = "fas fa-eye";
             }
         }
     </script>

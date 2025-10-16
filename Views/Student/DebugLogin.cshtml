@@ -1,0 +1,125 @@
+@{
+    ViewData["Title"] = "Login Debug";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Login Debug - TutorLiveMentor</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>?? Login Debug Tool</h1>
+    
+    <div class="debug-section info">
+        <h3>Step 1: Check System Status</h3>
+        <button onclick="checkSystemStatus()">Check Database & Session</button>
+        <div id="systemStatus"></div>
+    </div>
+
+    <div class="debug-section info">
+        <h3>Step 2: Test Manual Login</h3>
+        <button onclick="testManualLogin()">Test Login Process</button>
+        <div id="loginTest"></div>
+    </div>
+
+    <div class="debug-section info">
+        <h3>Step 3: Check Session</h3>
+        <button onclick="checkSession()">Check Current Session</button>
+        <div id="sessionCheck"></div>
+    </div>
+
+    <div class="debug-section">
+        <h3>Step 4: Go to Actual Login</h3>
+        <a href="@Url.Action("Login", "Student")" style="text-decoration: none;">
+            <button style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px;">
+                Go to Student Login Page
+            </button>
+        </a>
+    </div>
+
+    <script>
+        async function checkSystemStatus() {
+            const statusDiv = document.getElementById('systemStatus');
+            statusDiv.innerHTML = '<p>? Checking system status...</p>';
+            
+            try {
+                const response = await fetch('/Student/DebugLogin');
+                const data = await response.json();
+                
+                let html = '<h4>System Status:</h4>';
+                html += `<p><strong>Database:</strong> ${data.databaseConnection}</p>`;
+                html += `<p><strong>Total Students:</strong> ${data.totalStudents}</p>`;
+                html += `<p><strong>Session Working:</strong> ${data.sessionWorking ? '? Yes' : '? No'}</p>`;
+                html += `<p><strong>Session ID:</strong> ${data.sessionId}</p>`;
+                html += `<p><strong>Current Login:</strong> ${data.currentStudentId || 'Not logged in'}</p>`;
+                
+                if (data.sampleStudents && data.sampleStudents.length > 0) {
+                    html += '<h5>Sample Students in Database:</h5>';
+                    html += '<ul>';
+                    data.sampleStudents.forEach(student => {
+                        html += `<li>ID: ${student.id}, Name: ${student.fullName}, Email: ${student.email}</li>`;
+                    });
+                    html += '</ul>';
+                }
+                
+                statusDiv.innerHTML = html;
+            } catch (error) {
+                statusDiv.innerHTML = `<p class="error">? Error: ${error.message}</p>`;
+            }
+        }
+
+        async function testManualLogin() {
+            const testDiv = document.getElementById('loginTest');
+            testDiv.innerHTML = '<p>? Testing login process...</p>';
+            
+            try {
+                const response = await fetch('/Student/TestLogin');
+                const data = await response.json();
+                
+                testDiv.innerHTML = `
+                    <h4>Login Test Result:</h4>
+                    <p>${data.message}</p>
+                    ${data.studentId ? `<p><strong>Test Student ID:</strong> ${data.studentId}</p>` : ''}
+                    ${data.studentName ? `<p><strong>Test Student Name:</strong> ${data.studentName}</p>` : ''}
+                    ${data.sessionId ? `<p><strong>Session ID:</strong> ${data.sessionId}</p>` : ''}
+                `;
+            } catch (error) {
+                testDiv.innerHTML = `<p class="error">? Error: ${error.message}</p>`;
+            }
+        }
+
+        async function checkSession() {
+            const sessionDiv = document.getElementById('sessionCheck');
+            sessionDiv.innerHTML = '<p>? Checking session...</p>';
+            
+            try {
+                const response = await fetch('/Student/TestSession');
+                const data = await response.json();
+                
+                sessionDiv.innerHTML = `
+                    <h4>Session Check:</h4>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                sessionDiv.innerHTML = `<p class="error">? Error: ${error.message}</p>`;
+            }
+        }
+
+        // Auto-check system status on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkSystemStatus();
+        });
+    </script>
+</body>
+</html>
