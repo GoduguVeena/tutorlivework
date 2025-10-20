@@ -4,8 +4,6 @@ using TutorLiveMentor.Models;
 using TutorLiveMentor.Services;
 using System.Linq;
 using OfficeOpenXml;
-using iTextSharp.text;
-using iTextSharp.text.pdf;
 using System.Text;
 
 namespace TutorLiveMentor.Controllers
@@ -19,6 +17,21 @@ namespace TutorLiveMentor.Controllers
         {
             _context = context;
             _signalRService = signalRService;
+        }
+
+        /// <summary>
+        /// Helper method to check if department is CSEDS (handles specific variations only)
+        /// This method is for in-memory use only, not for LINQ queries
+        /// </summary>
+        private bool IsCSEDSDepartment(string department)
+        {
+            if (string.IsNullOrEmpty(department)) return false;
+            
+            // Normalize the department string
+            var normalizedDept = department.ToUpper().Replace("(", "").Replace(")", "").Replace(" ", "").Replace("-", "").Trim();
+            
+            // Only match specific CSEDS variations: "CSEDS" and "CSE(DS)"
+            return normalizedDept == "CSEDS" || normalizedDept == "CSEDS"; // CSE(DS) becomes CSEDS after normalization
         }
 
         [HttpGet]
@@ -60,7 +73,7 @@ namespace TutorLiveMentor.Controllers
                 await _signalRService.NotifyUserActivity(admin.Email, "Admin", "Logged In", $"{admin.Department} department administrator logged into the system");
 
                 // Redirect to department-specific dashboard based on department
-                if (admin.Department.ToUpper() == "CSEDS")
+                if (IsCSEDSDepartment(admin.Department))
                 {
                     return RedirectToAction("CSEDSDashboard");
                 }
@@ -95,7 +108,7 @@ namespace TutorLiveMentor.Controllers
         }
 
         /// <summary>
-        /// CSEDS Department-specific dashboard with filtered data and management capabilities
+        /// CSEDS Department-specific dashboard with enhanced faculty and subject management
         /// </summary>
         [HttpGet]
         public async Task<IActionResult> CSEDSDashboard()
@@ -103,35 +116,39 @@ namespace TutorLiveMentor.Controllers
             var adminId = HttpContext.Session.GetInt32("AdminId");
             var department = HttpContext.Session.GetString("AdminDepartment");
 
-            if (adminId == null || department?.ToUpper() != "CSEDS")
+            if (adminId == null || !IsCSEDSDepartment(department))
             {
                 TempData["ErrorMessage"] = "Access denied. CSEDS department access only.";
                 return RedirectToAction("Login");
             }
 
-            // Get CSEDS-specific statistics
+            // Get comprehensive CSEDS data - only match "CSEDS" and "CSE(DS)"
             var viewModel = new CSEDSDashboardViewModel
             {
                 AdminEmail = HttpContext.Session.GetString("AdminEmail") ?? "",
                 AdminDepartment = department ?? "",
 
-                // Count only CSEDS department data
+                // Count only CSEDS department data - exact matches only
                 CSEDSStudentsCount = await _context.Students
-                    .CountAsync(s => s.Department.ToUpper() == "CSEDS"),
+                    .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+                    .CountAsync(),
 
                 CSEDSFacultyCount = await _context.Faculties
-                    .CountAsync(f => f.Department.ToUpper() == "CSEDS"),
+                    .Where(f => f.Department == "CSEDS" || f.Department == "CSE(DS)")
+                    .CountAsync(),
 
                 CSEDSSubjectsCount = await _context.Subjects
-                    .CountAsync(s => s.Department.ToUpper() == "CSEDS"),
+                    .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+                    .CountAsync(),
 
                 CSEDSEnrollmentsCount = await _context.StudentEnrollments
                     .Include(se => se.Student)
-                    .CountAsync(se => se.Student.Department.ToUpper() == "CSEDS"),
+                    .Where(se => se.Student.Department == "CSEDS" || se.Student.Department == "CSE(DS)")
+                    .CountAsync(),
 
                 // Get recent CSEDS students
                 RecentStudents = await _context.Students
-                    .Where(s => s.Department.ToUpper() == "CSEDS")
+                    .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
                     .OrderByDescending(s => s.Id)
                     .Take(5)
                     .Select(s => new StudentActivityDto
@@ -150,7 +167,7 @@ namespace TutorLiveMentor.Controllers
                         .ThenInclude(a => a.Subject)
                     .Include(se => se.AssignedSubject)
                         .ThenInclude(a => a.Faculty)
-                    .Where(se => se.Student.Department.ToUpper() == "CSEDS")
+                    .Where(se => se.Student.Department == "CSEDS" || se.Student.Department == "CSE(DS)")
                     .OrderByDescending(se => se.StudentEnrollmentId)
                     .Take(10)
                     .Select(se => new EnrollmentActivityDto
@@ -158,12 +175,417 @@ namespace TutorLiveMentor.Controllers
                         StudentName = se.Student.FullName,
                         SubjectName = se.AssignedSubject.Subject.Name,
                         FacultyName = se.AssignedSubject.Faculty.Name,
-                        EnrollmentDate = DateTime.Now // Note: Add this field to StudentEnrollment if needed
+                        EnrollmentDate = DateTime.Now
                     })
+                    .ToListAsync(),
+
+                // Get all department faculty for management
+                DepartmentFaculty = await _context.Faculties
+                    .Where(f => f.Department == "CSEDS" || f.Department == "CSE(DS)")
+                    .OrderBy(f => f.Name)
+                    .ToListAsync(),
+
+                // Get all department subjects for management
+                DepartmentSubjects = await _context.Subjects
+                    .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+                    .OrderBy(s => s.Year)
+                    .ThenBy(s => s.Name)
+                    .ToListAsync(),
+
+                // Get subject-faculty mappings
+                SubjectFacultyMappings = await GetSubjectFacultyMappings()
+            };
+
+            return View(viewModel);
+        }
+
+        /// <summary>
+        /// Get comprehensive faculty management view
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> ManageCSEDSFaculty()
+        {
+            var department = HttpContext.Session.GetString("AdminDepartment");
+            if (!IsCSEDSDepartment(department))
+                return RedirectToAction("Login");
+
+            var viewModel = new FacultyManagementViewModel
+            {
+                DepartmentFaculty = await GetFacultyWithAssignments(),
+                AvailableSubjects = await _context.Subjects
+                    .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+                    .OrderBy(s => s.Year)
+                    .ThenBy(s => s.Name)
                     .ToListAsync()
             };
 
             return View(viewModel);
+        }
+
+        /// <summary>
+        /// Get subject-faculty assignment management view
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> ManageSubjectAssignments()
+        {
+            var department = HttpContext.Session.GetString("AdminDepartment");
+            if (!IsCSEDSDepartment(department))
+                return RedirectToAction("Login");
+
+            var viewModel = new SubjectManagementViewModel
+            {
+                DepartmentSubjects = await GetSubjectsWithAssignments(),
+                AvailableFaculty = await _context.Faculties
+                    .Where(f => f.Department == "CSEDS" || f.Department == "CSE(DS)")
+                    .OrderBy(f => f.Name)
+                    .ToListAsync()
+            };
+
+            return View(viewModel);
+        }
+
+        /// <summary>
+        /// Assign faculty to subject
+        /// </summary>
+        [HttpPost]
+        public async Task<IActionResult> AssignFacultyToSubject([FromBody] FacultySubjectAssignmentRequest request)
+        {
+            var department = HttpContext.Session.GetString("AdminDepartment");
+            if (!IsCSEDSDepartment(department))
+                return Unauthorized();
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                // Verify subject belongs to CSEDS department
+                var subject = await _context.Subjects
+                    .FirstOrDefaultAsync(s => s.SubjectId == request.SubjectId && 
+                                            (s.Department == "CSEDS" || s.Department == "CSE(DS)"));
+
+                if (subject == null)
+                    return BadRequest("Subject not found or does not belong to CSEDS department");
+
+                // Verify faculty belongs to CSEDS department
+                var faculty = await _context.Faculties
+                    .Where(f => request.FacultyIds.Contains(f.FacultyId) && 
+                              (f.Department == "CSEDS" || f.Department == "CSE(DS)"))
+                    .ToListAsync();
+
+                if (faculty.Count != request.FacultyIds.Count)
+                    return BadRequest("One or more faculty members not found or do not belong to CSEDS department");
+
+                // Remove existing assignments for this subject
+                var existingAssignments = await _context.AssignedSubjects
+                    .Where(a => a.SubjectId == request.SubjectId)
+                    .ToListAsync();
+
+                _context.AssignedSubjects.RemoveRange(existingAssignments);
+
+                // Create new assignments
+                foreach (var facultyId in request.FacultyIds)
+                {
+                    var assignedSubject = new AssignedSubject
+                    {
+                        FacultyId = facultyId,
+                        SubjectId = request.SubjectId,
+                        Department = "CSEDS",
+                        Year = subject.Year,
+                        SelectedCount = 0
+                    };
+                    _context.AssignedSubjects.Add(assignedSubject);
+                }
+
+                await _context.SaveChangesAsync();
+
+                await _signalRService.NotifyUserActivity(
+                    HttpContext.Session.GetString("AdminEmail") ?? "",
+                    "Admin",
+                    "Faculty Assignment Updated",
+                    $"Faculty assignments updated for subject: {subject.Name}"
+                );
+
+                return Ok(new { success = true, message = "Faculty assignments updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = $"Error updating assignments: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Remove faculty assignment from subject
+        /// </summary>
+        [HttpPost]
+        public async Task<IActionResult> RemoveFacultyAssignment([FromBody] RemoveFacultyAssignmentRequest request)
+        {
+            var department = HttpContext.Session.GetString("AdminDepartment");
+            if (!IsCSEDSDepartment(department))
+                return Unauthorized();
+
+            try
+            {
+                var assignment = await _context.AssignedSubjects
+                    .Include(a => a.Subject)
+                    .Include(a => a.Faculty)
+                    .FirstOrDefaultAsync(a => a.AssignedSubjectId == request.AssignedSubjectId &&
+                                           (a.Subject.Department == "CSEDS" || a.Subject.Department == "CSE(DS)"));
+
+                if (assignment == null)
+                    return NotFound("Assignment not found");
+
+                // Check if there are active enrollments
+                var hasEnrollments = await _context.StudentEnrollments
+                    .AnyAsync(se => se.AssignedSubjectId == request.AssignedSubjectId);
+
+                if (hasEnrollments)
+                    return BadRequest(new { success = false, message = "Cannot remove assignment with active student enrollments" });
+
+                _context.AssignedSubjects.Remove(assignment);
+                await _context.SaveChangesAsync();
+
+                await _signalRService.NotifyUserActivity(
+                    HttpContext.Session.GetString("AdminEmail") ?? "",
+                    "Admin",
+                    "Faculty Assignment Removed",
+                    $"Faculty {assignment.Faculty.Name} unassigned from subject: {assignment.Subject.Name}"
+                );
+
+                return Ok(new { success = true, message = "Faculty assignment removed successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = $"Error removing assignment: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Get all faculty in department with their assignments
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetDepartmentFaculty()
+        {
+            var department = HttpContext.Session.GetString("AdminDepartment");
+            if (!IsCSEDSDepartment(department))
+                return Unauthorized();
+
+            var faculty = await GetFacultyWithAssignments();
+            return Json(new { success = true, data = faculty });
+        }
+
+        /// <summary>
+        /// Get all subjects in department with their assignments
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetDepartmentSubjects()
+        {
+            var department = HttpContext.Session.GetString("AdminDepartment");
+            if (!IsCSEDSDepartment(department))
+                return Unauthorized();
+
+            var subjects = await GetSubjectsWithAssignments();
+            return Json(new { success = true, data = subjects });
+        }
+
+        /// <summary>
+        /// Get available faculty for a specific subject
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetAvailableFacultyForSubject(int subjectId)
+        {
+            var department = HttpContext.Session.GetString("AdminDepartment");
+            if (!IsCSEDSDepartment(department))
+                return Unauthorized();
+
+            // Get all CSEDS faculty
+            var allFaculty = await _context.Faculties
+                .Where(f => f.Department == "CSEDS" || f.Department == "CSE(DS)")
+                .Select(f => new { f.FacultyId, f.Name, f.Email })
+                .ToListAsync();
+
+            // Get currently assigned faculty for this subject
+            var assignedFaculty = await _context.AssignedSubjects
+                .Where(a => a.SubjectId == subjectId)
+                .Select(a => a.FacultyId)
+                .ToListAsync();
+
+            var result = allFaculty.Select(f => new
+            {
+                f.FacultyId,
+                f.Name,
+                f.Email,
+                IsAssigned = assignedFaculty.Contains(f.FacultyId)
+            }).ToList();
+
+            return Json(new { success = true, data = result });
+        }
+
+        /// <summary>
+        /// Helper method to get faculty with their assignments
+        /// </summary>
+        private async Task<List<FacultyDetailDto>> GetFacultyWithAssignments()
+        {
+            // First get all CSEDS faculty
+            var faculty = await _context.Faculties
+                .Where(f => f.Department == "CSEDS" || f.Department == "CSE(DS)")
+                .ToListAsync();
+
+            var result = new List<FacultyDetailDto>();
+
+            foreach (var f in faculty)
+            {
+                var assignedSubjects = await _context.AssignedSubjects
+                    .Include(a => a.Subject)
+                    .Where(a => a.FacultyId == f.FacultyId &&
+                              (a.Subject.Department == "CSEDS" || a.Subject.Department == "CSE(DS)"))
+                    .ToListAsync();
+
+                var enrollmentCount = 0;
+                var subjectInfos = new List<AssignedSubjectInfo>();
+
+                foreach (var assignment in assignedSubjects)
+                {
+                    var enrollments = await _context.StudentEnrollments
+                        .CountAsync(se => se.AssignedSubjectId == assignment.AssignedSubjectId);
+                    
+                    enrollmentCount += enrollments;
+                    
+                    subjectInfos.Add(new AssignedSubjectInfo
+                    {
+                        AssignedSubjectId = assignment.AssignedSubjectId,
+                        SubjectId = assignment.SubjectId,
+                        SubjectName = assignment.Subject.Name,
+                        Year = assignment.Subject.Year,
+                        Semester = assignment.Subject.Semester ?? "",
+                        EnrollmentCount = enrollments
+                    });
+                }
+
+                result.Add(new FacultyDetailDto
+                {
+                    FacultyId = f.FacultyId,
+                    Name = f.Name,
+                    Email = f.Email,
+                    Department = f.Department,
+                    AssignedSubjects = subjectInfos,
+                    TotalEnrollments = enrollmentCount
+                });
+            }
+
+            return result.OrderBy(f => f.Name).ToList();
+        }
+
+        /// <summary>
+        /// Helper method to get subjects with their assignments
+        /// </summary>
+        private async Task<List<SubjectDetailDto>> GetSubjectsWithAssignments()
+        {
+            // First get all CSEDS subjects
+            var subjects = await _context.Subjects
+                .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+                .ToListAsync();
+
+            var result = new List<SubjectDetailDto>();
+
+            foreach (var s in subjects)
+            {
+                var assignedFaculty = await _context.AssignedSubjects
+                    .Include(a => a.Faculty)
+                    .Where(a => a.SubjectId == s.SubjectId &&
+                              (a.Faculty.Department == "CSEDS" || a.Faculty.Department == "CSE(DS)"))
+                    .ToListAsync();
+
+                var totalEnrollments = 0;
+                var facultyInfos = new List<FacultyInfo>();
+
+                foreach (var assignment in assignedFaculty)
+                {
+                    var enrollments = await _context.StudentEnrollments
+                        .CountAsync(se => se.AssignedSubjectId == assignment.AssignedSubjectId);
+                    
+                    totalEnrollments += enrollments;
+                    
+                    facultyInfos.Add(new FacultyInfo
+                    {
+                        FacultyId = assignment.FacultyId,
+                        Name = assignment.Faculty.Name,
+                        Email = assignment.Faculty.Email,
+                        AssignedSubjectId = assignment.AssignedSubjectId
+                    });
+                }
+
+                result.Add(new SubjectDetailDto
+                {
+                    SubjectId = s.SubjectId,
+                    Name = s.Name,
+                    Department = s.Department,
+                    Year = s.Year,
+                    Semester = s.Semester ?? "",
+                    SemesterStartDate = s.SemesterStartDate,
+                    SemesterEndDate = s.SemesterEndDate,
+                    AssignedFaculty = facultyInfos,
+                    TotalEnrollments = totalEnrollments,
+                    IsActive = s.SemesterEndDate == null || s.SemesterEndDate >= DateTime.Now
+                });
+            }
+
+            return result.OrderBy(s => s.Year).ThenBy(s => s.Name).ToList();
+        }
+
+        /// <summary>
+        /// Helper method to get subject-faculty mappings
+        /// </summary>
+        private async Task<List<SubjectFacultyMappingDto>> GetSubjectFacultyMappings()
+        {
+            // First get all CSEDS subjects
+            var subjects = await _context.Subjects
+                .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+                .ToListAsync();
+
+            var result = new List<SubjectFacultyMappingDto>();
+
+            foreach (var s in subjects)
+            {
+                var assignedFaculty = await _context.AssignedSubjects
+                    .Include(a => a.Faculty)
+                    .Where(a => a.SubjectId == s.SubjectId &&
+                              (a.Faculty.Department == "CSEDS" || a.Faculty.Department == "CSE(DS)"))
+                    .ToListAsync();
+
+                var enrollmentCount = 0;
+                var facultyInfos = new List<FacultyInfo>();
+
+                foreach (var assignment in assignedFaculty)
+                {
+                    var enrollments = await _context.StudentEnrollments
+                        .CountAsync(se => se.AssignedSubjectId == assignment.AssignedSubjectId);
+                    
+                    enrollmentCount += enrollments;
+                    
+                    facultyInfos.Add(new FacultyInfo
+                    {
+                        FacultyId = assignment.FacultyId,
+                        Name = assignment.Faculty.Name,
+                        Email = assignment.Faculty.Email,
+                        AssignedSubjectId = assignment.AssignedSubjectId
+                    });
+                }
+
+                result.Add(new SubjectFacultyMappingDto
+                {
+                    SubjectId = s.SubjectId,
+                    SubjectName = s.Name,
+                    Year = s.Year,
+                    Semester = s.Semester ?? "",
+                    SemesterStartDate = s.SemesterStartDate,
+                    SemesterEndDate = s.SemesterEndDate,
+                    AssignedFaculty = facultyInfos,
+                    EnrollmentCount = enrollmentCount
+                });
+            }
+
+            return result.OrderBy(s => s.Year).ThenBy(s => s.SubjectName).ToList();
         }
 
         /// <summary>
@@ -175,28 +597,31 @@ namespace TutorLiveMentor.Controllers
             var adminId = HttpContext.Session.GetInt32("AdminId");
             var department = HttpContext.Session.GetString("AdminDepartment");
 
-            if (adminId == null || department?.ToUpper() != "CSEDS")
+            if (adminId == null || !IsCSEDSDepartment(department))
                 return Unauthorized();
 
-            // Get CSEDS-specific system information
             var systemInfo = new
             {
                 DatabaseStats = new
                 {
                     StudentsCount = await _context.Students
-                        .CountAsync(s => s.Department.ToUpper() == "CSEDS"),
+                        .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+                        .CountAsync(),
                     FacultiesCount = await _context.Faculties
-                        .CountAsync(f => f.Department.ToUpper() == "CSEDS"),
+                        .Where(f => f.Department == "CSEDS" || f.Department == "CSE(DS)")
+                        .CountAsync(),
                     SubjectsCount = await _context.Subjects
-                        .CountAsync(s => s.Department.ToUpper() == "CSEDS"),
+                        .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+                        .CountAsync(),
                     EnrollmentsCount = await _context.StudentEnrollments
                         .Include(se => se.Student)
-                        .CountAsync(se => se.Student.Department.ToUpper() == "CSEDS")
+                        .Where(se => se.Student.Department == "CSEDS" || se.Student.Department == "CSE(DS)")
+                        .CountAsync()
                 },
                 RecentActivity = new
                 {
                     RecentStudents = await _context.Students
-                        .Where(s => s.Department.ToUpper() == "CSEDS")
+                        .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
                         .OrderByDescending(s => s.Id)
                         .Take(5)
                         .Select(s => new { s.FullName, s.Email, s.Department, s.Year })
@@ -207,14 +632,13 @@ namespace TutorLiveMentor.Controllers
                             .ThenInclude(a => a.Subject)
                         .Include(se => se.AssignedSubject)
                             .ThenInclude(a => a.Faculty)
-                        .Where(se => se.Student.Department.ToUpper() == "CSEDS")
+                        .Where(se => se.Student.Department == "CSEDS" || se.Student.Department == "CSE(DS)")
                         .OrderByDescending(se => se.StudentEnrollmentId)
                         .Take(10)
-                        .Select(se => new
-                        {
-                            StudentName = se.Student.FullName,
-                            SubjectName = se.AssignedSubject.Subject.Name,
-                            FacultyName = se.AssignedSubject.Faculty.Name
+                        .Select(se => new { 
+                            StudentName = se.Student.FullName, 
+                            SubjectName = se.AssignedSubject.Subject.Name, 
+                            FacultyName = se.AssignedSubject.Faculty.Name 
                         })
                         .ToListAsync()
                 }
@@ -223,40 +647,17 @@ namespace TutorLiveMentor.Controllers
             return Json(systemInfo);
         }
 
-        /// <summary>
-        /// Manage CSEDS faculty members
-        /// </summary>
-        [HttpGet]
-        public async Task<IActionResult> ManageCSEDSFaculty()
-        {
-            var department = HttpContext.Session.GetString("AdminDepartment");
-            if (department?.ToUpper() != "CSEDS")
-                return RedirectToAction("Login");
-
-            var faculty = await _context.Faculties
-                .Where(f => f.Department.ToUpper() == "CSEDS")
-                .OrderBy(f => f.Name)
-                .ToListAsync();
-
-            return View(faculty);
-        }
-
-        /// <summary>
-        /// Add new CSEDS faculty member
-        /// </summary>
         [HttpPost]
         public async Task<IActionResult> AddCSEDSFaculty([FromBody] CSEDSFacultyViewModel model)
         {
             var department = HttpContext.Session.GetString("AdminDepartment");
-            if (department?.ToUpper() != "CSEDS")
+            if (!IsCSEDSDepartment(department))
                 return Unauthorized();
 
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Check if faculty email already exists
-            var existingFaculty = await _context.Faculties
-                .FirstOrDefaultAsync(f => f.Email == model.Email);
+            var existingFaculty = await _context.Faculties.FirstOrDefaultAsync(f => f.Email == model.Email);
             if (existingFaculty != null)
                 return BadRequest("Faculty with this email already exists");
 
@@ -271,7 +672,6 @@ namespace TutorLiveMentor.Controllers
             _context.Faculties.Add(faculty);
             await _context.SaveChangesAsync();
 
-            // Assign faculty to selected subjects
             if (model.SelectedSubjectIds.Any())
             {
                 foreach (var subjectId in model.SelectedSubjectIds)
@@ -281,7 +681,7 @@ namespace TutorLiveMentor.Controllers
                         FacultyId = faculty.FacultyId,
                         SubjectId = subjectId,
                         Department = "CSEDS",
-                        Year = 1, // Default year, can be updated later
+                        Year = 1,
                         SelectedCount = 0
                     };
                     _context.AssignedSubjects.Add(assignedSubject);
@@ -289,31 +689,24 @@ namespace TutorLiveMentor.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            await _signalRService.NotifyUserActivity(
-                HttpContext.Session.GetString("AdminEmail") ?? "",
-                "Admin",
-                "Faculty Added",
-                $"New CSEDS faculty member {faculty.Name} added to the system"
-            );
+            await _signalRService.NotifyUserActivity(HttpContext.Session.GetString("AdminEmail") ?? "", "Admin", "Faculty Added", $"New CSEDS faculty member {faculty.Name} added to the system");
 
             return Ok(new { success = true, message = "Faculty added successfully" });
         }
 
-        /// <summary>
-        /// Update existing CSEDS faculty member
-        /// </summary>
         [HttpPost]
         public async Task<IActionResult> UpdateCSEDSFaculty([FromBody] CSEDSFacultyViewModel model)
         {
             var department = HttpContext.Session.GetString("AdminDepartment");
-            if (department?.ToUpper() != "CSEDS")
+            if (!IsCSEDSDepartment(department))
                 return Unauthorized();
 
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
             var faculty = await _context.Faculties
-                .FirstOrDefaultAsync(f => f.FacultyId == model.FacultyId && f.Department.ToUpper() == "CSEDS");
+                .FirstOrDefaultAsync(f => f.FacultyId == model.FacultyId && 
+                                        (f.Department == "CSEDS" || f.Department == "CSE(DS)"));
 
             if (faculty == null)
                 return NotFound();
@@ -324,95 +717,73 @@ namespace TutorLiveMentor.Controllers
                 faculty.Password = model.Password;
 
             await _context.SaveChangesAsync();
-
-            await _signalRService.NotifyUserActivity(
-                HttpContext.Session.GetString("AdminEmail") ?? "",
-                "Admin",
-                "Faculty Updated",
-                $"CSEDS faculty member {faculty.Name} information updated"
-            );
+            await _signalRService.NotifyUserActivity(HttpContext.Session.GetString("AdminEmail") ?? "", "Admin", "Faculty Updated", $"CSEDS faculty member {faculty.Name} information updated");
 
             return Ok(new { success = true, message = "Faculty updated successfully" });
         }
 
-        /// <summary>
-        /// Manage CSEDS subjects
-        /// </summary>
+        [HttpPost]
+        public async Task<IActionResult> DeleteCSEDSFaculty([FromBody] dynamic data)
+        {
+            var department = HttpContext.Session.GetString("AdminDepartment");
+            if (!IsCSEDSDepartment(department))
+                return Unauthorized();
+
+            var facultyId = (int)data.facultyId;
+            var faculty = await _context.Faculties
+                .Include(f => f.AssignedSubjects)
+                    .ThenInclude(a => a.Enrollments)
+                .FirstOrDefaultAsync(f => f.FacultyId == facultyId && 
+                                        (f.Department == "CSEDS" || f.Department == "CSE(DS)"));
+
+            if (faculty == null)
+                return NotFound();
+
+            var hasEnrollments = faculty.AssignedSubjects?.Any(a => a.Enrollments?.Any() == true) == true;
+            if (hasEnrollments)
+                return BadRequest(new { success = false, message = "Cannot delete faculty with active student enrollments" });
+
+            if (faculty.AssignedSubjects != null)
+                _context.AssignedSubjects.RemoveRange(faculty.AssignedSubjects);
+
+            _context.Faculties.Remove(faculty);
+            await _context.SaveChangesAsync();
+            await _signalRService.NotifyUserActivity(HttpContext.Session.GetString("AdminEmail") ?? "", "Admin", "Faculty Deleted", $"CSEDS faculty member {faculty.Name} has been deleted from the system");
+
+            return Ok(new { success = true, message = "Faculty deleted successfully" });
+        }
+
         [HttpGet]
         public async Task<IActionResult> ManageCSEDSSubjects()
         {
             var department = HttpContext.Session.GetString("AdminDepartment");
-            if (department?.ToUpper() != "CSEDS")
+            if (!IsCSEDSDepartment(department))
                 return RedirectToAction("Login");
 
             var subjects = await _context.Subjects
-                .Where(s => s.Department.ToUpper() == "CSEDS")
+                .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
                 .OrderBy(s => s.Year)
                 .ThenBy(s => s.Name)
                 .ToListAsync();
-
+            
             return View(subjects);
         }
 
-        /// <summary>
-        /// Add new CSEDS subject
-        /// </summary>
-        [HttpPost]
-        public async Task<IActionResult> AddCSEDSSubject([FromBody] CSEDSSubjectViewModel model)
-        {
-            var department = HttpContext.Session.GetString("AdminDepartment");
-            if (department?.ToUpper() != "CSEDS")
-                return Unauthorized();
-
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            // Validate semester dates
-            if (model.SemesterEndDate <= model.SemesterStartDate)
-                return BadRequest("Semester end date must be after start date");
-
-            var subject = new Subject
-            {
-                Name = model.Name,
-                Department = "CSEDS",
-                Year = model.Year,
-                Semester = model.Semester,
-                SemesterStartDate = model.SemesterStartDate,
-                SemesterEndDate = model.SemesterEndDate
-            };
-
-            _context.Subjects.Add(subject);
-            await _context.SaveChangesAsync();
-
-            await _signalRService.NotifyUserActivity(
-                HttpContext.Session.GetString("AdminEmail") ?? "",
-                "Admin",
-                "Subject Added",
-                $"New CSEDS subject {subject.Name} added for Year {subject.Year}, {subject.Semester} semester"
-            );
-
-            return Ok(new { success = true, message = "Subject added successfully" });
-        }
-
-        /// <summary>
-        /// Get CSEDS reports and analytics
-        /// </summary>
         [HttpGet]
         public async Task<IActionResult> CSEDSReports()
         {
             var department = HttpContext.Session.GetString("AdminDepartment");
-            if (department?.ToUpper() != "CSEDS")
+            if (!IsCSEDSDepartment(department))
                 return RedirectToAction("Login");
 
             var viewModel = new CSEDSReportsViewModel
             {
                 AvailableSubjects = await _context.Subjects
-                    .Where(s => s.Department.ToUpper() == "CSEDS")
+                    .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
                     .OrderBy(s => s.Name)
                     .ToListAsync(),
-
                 AvailableFaculty = await _context.Faculties
-                    .Where(f => f.Department.ToUpper() == "CSEDS")
+                    .Where(f => f.Department == "CSEDS" || f.Department == "CSE(DS)")
                     .OrderBy(f => f.Name)
                     .ToListAsync()
             };
@@ -420,249 +791,7 @@ namespace TutorLiveMentor.Controllers
             return View(viewModel);
         }
 
-        /// <summary>
-        /// Generate CSEDS report data based on filters
-        /// </summary>
-        [HttpPost]
-        public async Task<IActionResult> GenerateCSEDSReport([FromBody] CSEDSReportsViewModel filters)
-        {
-            var department = HttpContext.Session.GetString("AdminDepartment");
-            if (department?.ToUpper() != "CSEDS")
-                return Unauthorized();
-
-            var query = _context.StudentEnrollments
-                .Include(se => se.Student)
-                .Include(se => se.AssignedSubject)
-                    .ThenInclude(a => a.Subject)
-                .Include(se => se.AssignedSubject)
-                    .ThenInclude(a => a.Faculty)
-                .Where(se => se.Student.Department.ToUpper() == "CSEDS");
-
-            // Apply filters
-            if (filters.SelectedSubjectId.HasValue)
-                query = query.Where(se => se.AssignedSubject.SubjectId == filters.SelectedSubjectId.Value);
-
-            if (filters.SelectedFacultyId.HasValue)
-                query = query.Where(se => se.AssignedSubject.FacultyId == filters.SelectedFacultyId.Value);
-
-            if (filters.SelectedYear.HasValue)
-                query = query.Where(se => se.Student.Year == filters.SelectedYear.Value.ToString());
-
-            if (!string.IsNullOrEmpty(filters.SelectedSemester))
-                query = query.Where(se => se.AssignedSubject.Subject.Semester == filters.SelectedSemester);
-
-            // Note: Date filtering would require adding enrollment date to StudentEnrollment model
-
-            var results = await query
-                .Select(se => new EnrollmentReportDto
-                {
-                    StudentName = se.Student.FullName,
-                    StudentEmail = se.Student.Email,
-                    StudentYear = se.Student.Year,
-                    SubjectName = se.AssignedSubject.Subject.Name,
-                    FacultyName = se.AssignedSubject.Faculty.Name,
-                    FacultyEmail = se.AssignedSubject.Faculty.Email,
-                    EnrollmentDate = DateTime.Now, // Add proper date field
-                    Semester = se.AssignedSubject.Subject.Semester ?? ""
-                })
-                .ToListAsync();
-
-            return Json(new { success = true, data = results, totalRecords = results.Count });
-        }
-
-        /// <summary>
-        /// Export CSEDS report data to Excel
-        /// </summary>
-        [HttpPost]
-        public async Task<IActionResult> ExportCSEDSReportExcel(string filters)
-        {
-            var department = HttpContext.Session.GetString("AdminDepartment");
-            if (department?.ToUpper() != "CSEDS")
-                return Unauthorized();
-
-            // Parse filters from form data
-            var filterObj = new CSEDSReportsViewModel();
-            if (!string.IsNullOrEmpty(filters))
-            {
-                try
-                {
-                    filterObj = System.Text.Json.JsonSerializer.Deserialize<CSEDSReportsViewModel>(filters);
-                }
-                catch
-                {
-                    // Use default empty filters
-                }
-            }
-
-            // Get filtered data (reuse the same logic as GenerateCSEDSReport)
-            var reportData = await GetFilteredCSEDSReportData(filterObj);
-
-            // Create Excel file
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-            using var package = new ExcelPackage();
-            var worksheet = package.Workbook.Worksheets.Add("CSEDS Report");
-
-            // Add headers
-            worksheet.Cells[1, 1].Value = "Student Name";
-            worksheet.Cells[1, 2].Value = "Student Email";
-            worksheet.Cells[1, 3].Value = "Year";
-            worksheet.Cells[1, 4].Value = "Subject";
-            worksheet.Cells[1, 5].Value = "Faculty";
-            worksheet.Cells[1, 6].Value = "Faculty Email";
-            worksheet.Cells[1, 7].Value = "Semester";
-            worksheet.Cells[1, 8].Value = "Enrollment Date";
-
-            // Style headers
-            using var range = worksheet.Cells[1, 1, 1, 8];
-            range.Style.Font.Bold = true;
-            range.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
-            range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
-
-            // Add data
-            for (int i = 0; i < reportData.Count; i++)
-            {
-                var row = i + 2;
-                var data = reportData[i];
-                worksheet.Cells[row, 1].Value = data.StudentName;
-                worksheet.Cells[row, 2].Value = data.StudentEmail;
-                worksheet.Cells[row, 3].Value = data.StudentYear;
-                worksheet.Cells[row, 4].Value = data.SubjectName;
-                worksheet.Cells[row, 5].Value = data.FacultyName;
-                worksheet.Cells[row, 6].Value = data.FacultyEmail;
-                worksheet.Cells[row, 7].Value = data.Semester;
-                worksheet.Cells[row, 8].Value = data.EnrollmentDate.ToString("yyyy-MM-dd");
-            }
-
-            worksheet.Cells.AutoFitColumns();
-
-            var content = package.GetAsByteArray();
-            var fileName = $"CSEDS_Report_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
-
-            return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
-        }
-
-        /// <summary>
-        /// Export CSEDS report data to PDF
-        /// </summary>
-        [HttpPost]
-        public async Task<IActionResult> ExportCSEDSReportPDF(string filters)
-        {
-            var department = HttpContext.Session.GetString("AdminDepartment");
-            if (department?.ToUpper() != "CSEDS")
-                return Unauthorized();
-
-            // Parse filters from form data
-            var filterObj = new CSEDSReportsViewModel();
-            if (!string.IsNullOrEmpty(filters))
-            {
-                try
-                {
-                    filterObj = System.Text.Json.JsonSerializer.Deserialize<CSEDSReportsViewModel>(filters);
-                }
-                catch
-                {
-                    // Use default empty filters
-                }
-            }
-
-            // Get filtered data
-            var reportData = await GetFilteredCSEDSReportData(filterObj);
-
-            using var stream = new MemoryStream();
-            var document = new Document(PageSize.A4.Rotate());
-            PdfWriter.GetInstance(document, stream);
-
-            document.Open();
-
-            // Add title
-            var titleFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 16);
-            var title = new Paragraph("CSEDS Department Report", titleFont)
-            {
-                Alignment = Element.ALIGN_CENTER
-            };
-            document.Add(title);
-            document.Add(new Paragraph(" ")); // Space
-
-            // Create table
-            var table = new PdfPTable(8);
-            table.WidthPercentage = 100;
-
-            // Add headers
-            var headerFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 10);
-            table.AddCell(new PdfPCell(new Phrase("Student Name", headerFont)));
-            table.AddCell(new PdfPCell(new Phrase("Email", headerFont)));
-            table.AddCell(new PdfPCell(new Phrase("Year", headerFont)));
-            table.AddCell(new PdfPCell(new Phrase("Subject", headerFont)));
-            table.AddCell(new PdfPCell(new Phrase("Faculty", headerFont)));
-            table.AddCell(new PdfPCell(new Phrase("Faculty Email", headerFont)));
-            table.AddCell(new PdfPCell(new Phrase("Semester", headerFont)));
-            table.AddCell(new PdfPCell(new Phrase("Date", headerFont)));
-
-            // Add data
-            var dataFont = FontFactory.GetFont(FontFactory.HELVETICA, 9);
-            foreach (var data in reportData)
-            {
-                table.AddCell(new PdfPCell(new Phrase(data.StudentName, dataFont)));
-                table.AddCell(new PdfPCell(new Phrase(data.StudentEmail, dataFont)));
-                table.AddCell(new PdfPCell(new Phrase(data.StudentYear, dataFont)));
-                table.AddCell(new PdfPCell(new Phrase(data.SubjectName, dataFont)));
-                table.AddCell(new PdfPCell(new Phrase(data.FacultyName, dataFont)));
-                table.AddCell(new PdfPCell(new Phrase(data.FacultyEmail, dataFont)));
-                table.AddCell(new PdfPCell(new Phrase(data.Semester, dataFont)));
-                table.AddCell(new PdfPCell(new Phrase(data.EnrollmentDate.ToString("yyyy-MM-dd"), dataFont)));
-            }
-
-            document.Add(table);
-            document.Close();
-
-            var content = stream.ToArray();
-            var fileName = $"CSEDS_Report_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
-
-            return File(content, "application/pdf", fileName);
-        }
-
-        /// <summary>
-        /// Helper method to get filtered report data
-        /// </summary>
-        private async Task<List<EnrollmentReportDto>> GetFilteredCSEDSReportData(CSEDSReportsViewModel filters)
-        {
-            var query = _context.StudentEnrollments
-                .Include(se => se.Student)
-                .Include(se => se.AssignedSubject)
-                    .ThenInclude(a => a.Subject)
-                .Include(se => se.AssignedSubject)
-                    .ThenInclude(a => a.Faculty)
-                .Where(se => se.Student.Department.ToUpper() == "CSEDS");
-
-            // Apply filters (same logic as GenerateCSEDSReport)
-            if (filters.SelectedSubjectId.HasValue)
-                query = query.Where(se => se.AssignedSubject.SubjectId == filters.SelectedSubjectId.Value);
-
-            if (filters.SelectedFacultyId.HasValue)
-                query = query.Where(se => se.AssignedSubject.FacultyId == filters.SelectedFacultyId.Value);
-
-            if (filters.SelectedYear.HasValue)
-                query = query.Where(se => se.Student.Year == filters.SelectedYear.Value.ToString());
-
-            if (!string.IsNullOrEmpty(filters.SelectedSemester))
-                query = query.Where(se => se.AssignedSubject.Subject.Semester == filters.SelectedSemester);
-
-            return await query
-                .Select(se => new EnrollmentReportDto
-                {
-                    StudentName = se.Student.FullName,
-                    StudentEmail = se.Student.Email,
-                    StudentYear = se.Student.Year,
-                    SubjectName = se.AssignedSubject.Subject.Name,
-                    FacultyName = se.AssignedSubject.Faculty.Name,
-                    FacultyEmail = se.AssignedSubject.Faculty.Email,
-                    EnrollmentDate = DateTime.Now, // Add proper date field
-                    Semester = se.AssignedSubject.Subject.Semester ?? ""
-                })
-                .ToListAsync();
-        }
-
-        // Keep the old CSEDashboard method for backward compatibility, but redirect to CSEDS
+        // Keep the old CSEDashboard method for backward compatibility
         [HttpGet]
         public IActionResult CSEDashboard()
         {
@@ -676,7 +805,6 @@ namespace TutorLiveMentor.Controllers
             if (adminId == null)
                 return RedirectToAction("Login");
 
-            // Get system statistics for admin dashboard
             var stats = new AdminDashboardViewModel
             {
                 TotalStudents = await _context.Students.CountAsync(),
@@ -698,9 +826,7 @@ namespace TutorLiveMentor.Controllers
 
             var admin = await _context.Admins.FindAsync(adminId.Value);
             if (admin == null)
-            {
                 return NotFound();
-            }
 
             return View(admin);
         }
@@ -725,7 +851,6 @@ namespace TutorLiveMentor.Controllers
                 var admin = await _context.Admins.FindAsync(adminId.Value);
                 if (admin != null)
                 {
-                    // Notify system of admin logout
                     await _signalRService.NotifyUserActivity(admin.Email, "Admin", "Logged Out", $"{admin.Department} department administrator logged out of the system");
                 }
             }
@@ -741,7 +866,6 @@ namespace TutorLiveMentor.Controllers
             if (adminId == null)
                 return RedirectToAction("Login");
 
-            // Get detailed system information
             var systemInfo = new
             {
                 DatabaseStats = new
@@ -754,26 +878,8 @@ namespace TutorLiveMentor.Controllers
                 },
                 RecentActivity = new
                 {
-                    RecentStudents = await _context.Students
-                        .OrderByDescending(s => s.Id)
-                        .Take(5)
-                        .Select(s => new { s.FullName, s.Email, s.Department, s.Year })
-                        .ToListAsync(),
-                    RecentEnrollments = await _context.StudentEnrollments
-                        .Include(se => se.Student)
-                        .Include(se => se.AssignedSubject)
-                            .ThenInclude(a => a.Subject)
-                        .Include(se => se.AssignedSubject)
-                            .ThenInclude(a => a.Faculty)
-                        .OrderByDescending(se => se.StudentEnrollmentId)
-                        .Take(10)
-                        .Select(se => new
-                        {
-                            StudentName = se.Student.FullName,
-                            SubjectName = se.AssignedSubject.Subject.Name,
-                            FacultyName = se.AssignedSubject.Faculty.Name
-                        })
-                        .ToListAsync()
+                    RecentStudents = await _context.Students.OrderByDescending(s => s.Id).Take(5).Select(s => new { s.FullName, s.Email, s.Department, s.Year }).ToListAsync(),
+                    RecentEnrollments = await _context.StudentEnrollments.Include(se => se.Student).Include(se => se.AssignedSubject).ThenInclude(a => a.Subject).Include(se => se.AssignedSubject).ThenInclude(a => a.Faculty).OrderByDescending(se => se.StudentEnrollmentId).Take(10).Select(se => new { StudentName = se.Student.FullName, SubjectName = se.AssignedSubject.Subject.Name, FacultyName = se.AssignedSubject.Faculty.Name }).ToListAsync()
                 }
             };
 
@@ -791,5 +897,22 @@ namespace TutorLiveMentor.Controllers
         public int TotalSubjects { get; set; }
         public int TotalEnrollments { get; set; }
         public int TotalAdmins { get; set; }
+    }
+
+    /// <summary>
+    /// Request model for faculty-subject assignment
+    /// </summary>
+    public class FacultySubjectAssignmentRequest
+    {
+        public int SubjectId { get; set; }
+        public List<int> FacultyIds { get; set; } = new List<int>();
+    }
+
+    /// <summary>
+    /// Request model for removing faculty assignment
+    /// </summary>
+    public class RemoveFacultyAssignmentRequest
+    {
+        public int AssignedSubjectId { get; set; }
     }
 }

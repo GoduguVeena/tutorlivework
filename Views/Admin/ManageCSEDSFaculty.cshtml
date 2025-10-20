@@ -1,0 +1,718 @@
+@model TutorLiveMentor.Models.FacultyManagementViewModel
+@{
+    ViewData["Title"] = "Manage CSEDS Faculty";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - TutorLiveMentor</title>
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:700,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        :root {
+            --royal-blue: #274060;
+            --warm-gold: #FFC857;
+            --cream: #F9FAF2;
+            --slate: #CED3DC;
+            --card-shadow: rgba(39,64,96,0.13);
+            --success-green: #28a745;
+            --error-red: #dc3545;
+            --cseds-purple: #6f42c1;
+            --cseds-teal: #20c997;
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px 0;
+            font-family: 'Montserrat', Arial, sans-serif;
+            background: linear-gradient(rgba(249, 250, 242, 0.15), rgba(255, 200, 87, 0.10)),
+            url('@Url.Content("~/images/RGMCET-BACKGROUND.jpg")') center center/cover no-repeat fixed;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 0;
+            display: block;
+            background: linear-gradient(135deg, var(--cream) 60%, var(--warm-gold) 100%);
+            opacity: 0.20;
+            pointer-events: none;
+        }
+
+        .main-container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .page-header {
+            background: rgba(249,250,242,0.95);
+            backdrop-filter: blur(12px);
+            border: 2px solid var(--slate);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px var(--card-shadow);
+        }
+
+        .page-header h1 {
+            color: var(--royal-blue);
+            font-weight: 700;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .page-header .breadcrumb {
+            background: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .page-header .breadcrumb-item a {
+            color: var(--cseds-purple);
+            text-decoration: none;
+        }
+
+        .faculty-section {
+            background: rgba(249,250,242,0.95);
+            backdrop-filter: blur(12px);
+            border: 2px solid var(--slate);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px var(--card-shadow);
+        }
+
+        .section-title {
+            color: var(--royal-blue);
+            font-weight: 700;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .glass-btn {
+            background: linear-gradient(135deg, var(--cseds-purple) 0%, var(--cseds-teal) 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 25px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 6px 20px var(--card-shadow);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .glass-btn:hover {
+            background: linear-gradient(135deg, var(--cseds-teal) 0%, var(--cseds-purple) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(111, 66, 193, 0.4);
+            text-decoration: none;
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+            color: #212529;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .faculty-table {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .faculty-table thead {
+            background: linear-gradient(135deg, var(--cseds-purple), var(--cseds-teal));
+            color: white;
+        }
+
+        .faculty-table thead th {
+            font-weight: 600;
+            border: none;
+            padding: 15px;
+        }
+
+        .faculty-table tbody td {
+            padding: 15px;
+            vertical-align: middle;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .faculty-table tbody tr:hover {
+            background-color: rgba(111, 66, 193, 0.05);
+        }
+
+        .faculty-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin: 2px;
+        }
+
+        .faculty-badge.year-1 { background: #e3f2fd; color: #1976d2; }
+        .faculty-badge.year-2 { background: #f3e5f5; color: #7b1fa2; }
+        .faculty-badge.year-3 { background: #e8f5e8; color: #388e3c; }
+        .faculty-badge.year-4 { background: #fff3e0; color: #f57c00; }
+
+        .modal {
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: rgba(249,250,242,0.98);
+            border-radius: 20px;
+            border: 2px solid var(--slate);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--cseds-purple), var(--cseds-teal));
+            color: white;
+            border-radius: 18px 18px 0 0;
+            border-bottom: none;
+        }
+
+        .modal-title {
+            font-weight: 700;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--royal-blue);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9em;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid var(--slate);
+            border-radius: 8px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--cseds-purple);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 0 0 3px rgba(111, 66, 193, 0.1);
+        }
+
+        .assignment-card {
+            background: rgba(111, 66, 193, 0.1);
+            border: 1px solid rgba(111, 66, 193, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .assignment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .assignment-details {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8em;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @@keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .alert {
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        /* Responsive Design */
+        @@media (max-width: 768px) {
+            .main-container {
+                padding: 0 15px;
+            }
+
+            .faculty-section {
+                padding: 20px;
+            }
+
+            .faculty-table thead {
+                display: none;
+            }
+
+            .faculty-table tbody tr {
+                display: block;
+                border: 1px solid #ddd;
+                border-radius: 10px;
+                margin-bottom: 15px;
+                padding: 15px;
+            }
+
+            .faculty-table tbody td {
+                display: block;
+                text-align: right;
+                border: none;
+                padding: 8px 0;
+            }
+
+            .faculty-table tbody td::before {
+                content: attr(data-label) ": ";
+                float: left;
+                font-weight: bold;
+                color: var(--royal-blue);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>
+                <i class="fas fa-chalkboard-teacher"></i>
+                Manage CSEDS Faculty
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="@Url.Action("CSEDSDashboard", "Admin")">
+                            <i class="fas fa-home"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">Faculty Management</li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Faculty Management Section -->
+        <div class="faculty-section">
+            <div class="section-title">
+                <h3><i class="fas fa-users"></i> Department Faculty</h3>
+                <button type="button" class="glass-btn" data-bs-toggle="modal" data-bs-target="#addFacultyModal">
+                    <i class="fas fa-plus"></i> Add New Faculty
+                </button>
+            </div>
+
+            <!-- Faculty Table -->
+            <div class="table-responsive">
+                <table class="table faculty-table" id="facultyTable">
+                    <thead>
+                        <tr>
+                            <th>Faculty Details</th>
+                            <th>Assigned Subjects</th>
+                            <th>Total Enrollments</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var faculty in Model.DepartmentFaculty)
+                        {
+                            <tr>
+                                <td data-label="Faculty Details">
+                                    <div>
+                                        <strong>@faculty.Name</strong><br>
+                                        <small class="text-muted">@faculty.Email</small><br>
+                                        <span class="badge bg-primary">@faculty.Department</span>
+                                    </div>
+                                </td>
+                                <td data-label="Assigned Subjects">
+                                    @if (faculty.AssignedSubjects.Any())
+                                    {
+                                        @foreach (var subject in faculty.AssignedSubjects)
+                                        {
+                                            <span class="faculty-badge year-@subject.Year">
+                                                @subject.SubjectName (Year @subject.Year, @subject.Semester)
+                                                <small>(@subject.EnrollmentCount students)</small>
+                                            </span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">No subjects assigned</span>
+                                    }
+                                </td>
+                                <td data-label="Total Enrollments">
+                                    <span class="badge bg-info">@faculty.TotalEnrollments students</span>
+                                </td>
+                                <td data-label="Actions">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-warning btn-sm" 
+                                                onclick="editFaculty(@faculty.FacultyId, '@faculty.Name', '@faculty.Email')">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                        <button type="button" class="btn btn-success btn-sm" 
+                                                onclick="assignSubjects(@faculty.FacultyId, '@faculty.Name')">
+                                            <i class="fas fa-link"></i> Assign
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-sm" 
+                                                onclick="deleteFaculty(@faculty.FacultyId, '@faculty.Name')">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (!Model.DepartmentFaculty.Any())
+            {
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle"></i>
+                    No faculty found in the CSEDS department. Click "Add New Faculty" to get started.
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Add Faculty Modal -->
+    <div class="modal fade" id="addFacultyModal" tabindex="-1" aria-labelledby="addFacultyModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addFacultyModalLabel">
+                        <i class="fas fa-user-plus"></i> Add New CSEDS Faculty
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="addFacultyForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="facultyName" class="form-label">Faculty Name</label>
+                                    <input type="text" class="form-control" id="facultyName" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="facultyEmail" class="form-label">Email Address</label>
+                                    <input type="email" class="form-control" id="facultyEmail" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="facultyPassword" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="facultyPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="selectedSubjects" class="form-label">Assign to Subjects (Optional)</label>
+                            <select class="form-select" id="selectedSubjects" multiple>
+                                @foreach (var subject in Model.AvailableSubjects)
+                                {
+                                    <option value="@subject.SubjectId">
+                                        @subject.Name (Year @subject.Year, @subject.Semester)
+                                    </option>
+                                }
+                            </select>
+                            <div class="form-text">Hold Ctrl/Cmd to select multiple subjects</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="glass-btn">
+                            <i class="fas fa-save"></i> Add Faculty
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Faculty Modal -->
+    <div class="modal fade" id="editFacultyModal" tabindex="-1" aria-labelledby="editFacultyModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editFacultyModalLabel">
+                        <i class="fas fa-edit"></i> Edit Faculty
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="editFacultyForm">
+                    <input type="hidden" id="editFacultyId">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="editFacultyName" class="form-label">Faculty Name</label>
+                            <input type="text" class="form-control" id="editFacultyName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editFacultyEmail" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="editFacultyEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editFacultyPassword" class="form-label">New Password (leave blank to keep current)</label>
+                            <input type="password" class="form-control" id="editFacultyPassword">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="glass-btn">
+                            <i class="fas fa-save"></i> Update Faculty
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subject Assignment Modal -->
+    <div class="modal fade" id="assignSubjectsModal" tabindex="-1" aria-labelledby="assignSubjectsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="assignSubjectsModalLabel">
+                        <i class="fas fa-link"></i> Assign Subjects to Faculty
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="assignFacultyId">
+                    <div id="subjectAssignmentContainer">
+                        <!-- Dynamic content will be loaded here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            // Initialize DataTable
+            $('#facultyTable').DataTable({
+                responsive: true,
+                pageLength: 10,
+                order: [[0, 'asc']],
+                language: {
+                    emptyTable: "No faculty found in the CSEDS department"
+                }
+            });
+        });
+
+        // Add Faculty Form Submission
+        document.getElementById('addFacultyForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const selectedSubjects = Array.from(document.getElementById('selectedSubjects').selectedOptions)
+                .map(option => parseInt(option.value));
+
+            const formData = {
+                Name: document.getElementById('facultyName').value,
+                Email: document.getElementById('facultyEmail').value,
+                Password: document.getElementById('facultyPassword').value,
+                Department: 'CSEDS',
+                SelectedSubjectIds: selectedSubjects
+            };
+
+            try {
+                const response = await fetch('@Url.Action("AddCSEDSFaculty", "Admin")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('Faculty added successfully!', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('addFacultyModal')).hide();
+                    location.reload(); // Refresh to show new faculty
+                } else {
+                    showAlert('Error adding faculty: ' + (result.message || 'Unknown error'), 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error adding faculty. Please try again.', 'danger');
+            }
+        });
+
+        // Edit Faculty
+        function editFaculty(facultyId, name, email) {
+            document.getElementById('editFacultyId').value = facultyId;
+            document.getElementById('editFacultyName').value = name;
+            document.getElementById('editFacultyEmail').value = email;
+            document.getElementById('editFacultyPassword').value = '';
+            
+            new bootstrap.Modal(document.getElementById('editFacultyModal')).show();
+        }
+
+        // Edit Faculty Form Submission
+        document.getElementById('editFacultyForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                FacultyId: parseInt(document.getElementById('editFacultyId').value),
+                Name: document.getElementById('editFacultyName').value,
+                Email: document.getElementById('editFacultyEmail').value,
+                Password: document.getElementById('editFacultyPassword').value,
+                Department: 'CSEDS'
+            };
+
+            try {
+                const response = await fetch('@Url.Action("UpdateCSEDSFaculty", "Admin")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('Faculty updated successfully!', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('editFacultyModal')).hide();
+                    location.reload(); // Refresh to show updated data
+                } else {
+                    showAlert('Error updating faculty: ' + (result.message || 'Unknown error'), 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error updating faculty. Please try again.', 'danger');
+            }
+        });
+
+        // Assign Subjects to Faculty
+        async function assignSubjects(facultyId, facultyName) {
+            document.getElementById('assignFacultyId').value = facultyId;
+            document.getElementById('assignSubjectsModalLabel').innerHTML = 
+                `<i class="fas fa-link"></i> Assign Subjects to ${facultyName}`;
+            
+            // Load current assignments and available subjects
+            try {
+                const response = await fetch(`@Url.Action("GetAvailableFacultyForSubject", "Admin")?subjectId=0`);
+                const data = await response.json();
+                
+                // This would need to be implemented to show current assignments
+                // For now, we'll show a simple message
+                document.getElementById('subjectAssignmentContainer').innerHTML = 
+                    '<p>Subject assignment functionality will be available in the Subject Management view.</p>';
+                
+                new bootstrap.Modal(document.getElementById('assignSubjectsModal')).show();
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error loading assignment data.', 'danger');
+            }
+        }
+
+        // Delete Faculty
+        async function deleteFaculty(facultyId, facultyName) {
+            if (!confirm(`Are you sure you want to delete faculty member "${facultyName}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('@Url.Action("DeleteCSEDSFaculty", "Admin")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ facultyId: facultyId })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('Faculty deleted successfully!', 'success');
+                    location.reload(); // Refresh to remove deleted faculty
+                } else {
+                    showAlert('Error deleting faculty: ' + (result.message || 'Unknown error'), 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error deleting faculty. Please try again.', 'danger');
+            }
+        }
+
+        // Utility function to show alerts
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Insert at the top of the main container
+            document.querySelector('.main-container').insertBefore(alertDiv, document.querySelector('.page-header'));
+            
+            // Auto dismiss after 5 seconds
+            setTimeout(() => {
+                if (alertDiv && alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
