@@ -109,7 +109,7 @@ namespace TutorLiveMentor.Hubs
                 FacultyName = facultyName,
                 StudentName = studentName,
                 Timestamp = DateTime.Now,
-                IsFull = newCount >= 20
+                IsFull = newCount >= 30
             });
 
             // Also notify all faculty members

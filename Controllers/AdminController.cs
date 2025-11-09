@@ -20,7 +20,7 @@ namespace TutorLiveMentor.Controllers
         }
 
         /// <summary>
-        /// Helper method to check if department is CSEDS (handles specific variations only)
+        /// Helper method to check if department is CSE(DS) (handles specific variations only)
         /// This method is for in-memory use only, not for LINQ queries
         /// </summary>
         private bool IsCSEDSDepartment(string department)
@@ -30,8 +30,8 @@ namespace TutorLiveMentor.Controllers
             // Normalize the department string
             var normalizedDept = department.ToUpper().Replace("(", "").Replace(")", "").Replace(" ", "").Replace("-", "").Trim();
 
-            // Only match specific CSEDS variations: "CSEDS" and "CSE(DS)"
-            return normalizedDept == "CSEDS" || normalizedDept == "CSEDS"; // CSE(DS) becomes CSEDS after normalization
+            // Match both CSE(DS) and legacy CSEDS format
+            return normalizedDept == "CSEDS" || department.Equals("CSE(DS)", StringComparison.OrdinalIgnoreCase);
         }
 
         [HttpGet]
@@ -132,41 +132,41 @@ namespace TutorLiveMentor.Controllers
 
             if (!IsCSEDSDepartment(department))
             {
-                Console.WriteLine($"Access denied - Department: {department} is not CSEDS");
-                TempData["ErrorMessage"] = "Access denied. CSEDS department access only.";
+                Console.WriteLine($"Access denied - Department: {department} is not CSE(DS)");
+                TempData["ErrorMessage"] = "Access denied. CSE(DS) department access only.";
                 return RedirectToAction("Login");
             }
 
             // Force session commit to ensure it persists
             await HttpContext.Session.CommitAsync();
 
-            // Get comprehensive CSEDS data - only match "CSEDS" and "CSE(DS)"
+            // Get comprehensive CSE(DS) data - support both "CSE(DS)" and legacy "CSEDS"
             var viewModel = new CSEDSDashboardViewModel
             {
                 AdminEmail = HttpContext.Session.GetString("AdminEmail") ?? "",
                 AdminDepartment = department ?? "",
 
-                // Count only CSEDS department data - exact matches only
+                // Count only CSE(DS) department data - support both formats
                 CSEDSStudentsCount = await _context.Students
-                    .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+                    .Where(s => s.Department == "CSE(DS)" || s.Department == "CSEDS")
                     .CountAsync(),
 
                 CSEDSFacultyCount = await _context.Faculties
-                    .Where(f => f.Department == "CSEDS" || f.Department == "CSE(DS)")
+                    .Where(f => f.Department == "CSE(DS)" || f.Department == "CSEDS")
                     .CountAsync(),
 
                 CSEDSSubjectsCount = await _context.Subjects
-                    .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+                    .Where(s => s.Department == "CSE(DS)" || s.Department == "CSEDS")
                     .CountAsync(),
 
                 CSEDSEnrollmentsCount = await _context.StudentEnrollments
                     .Include(se => se.Student)
-                    .Where(se => se.Student.Department == "CSEDS" || se.Student.Department == "CSE(DS)")
+                    .Where(se => se.Student.Department == "CSE(DS)" || se.Student.Department == "CSEDS")
                     .CountAsync(),
 
-                // Get recent CSEDS students
+                // Get recent CSE(DS) students
                 RecentStudents = await _context.Students
-                    .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+                    .Where(s => s.Department == "CSE(DS)" || s.Department == "CSEDS")
                     .OrderByDescending(s => s.Id)
                     .Take(5)
                     .Select(s => new StudentActivityDto
@@ -178,14 +178,14 @@ namespace TutorLiveMentor.Controllers
                     })
                     .ToListAsync(),
 
-                // Get recent CSEDS enrollments
+                // Get recent CSE(DS) enrollments
                 RecentEnrollments = await _context.StudentEnrollments
                     .Include(se => se.Student)
                     .Include(se => se.AssignedSubject)
                         .ThenInclude(a => a.Subject)
                     .Include(se => se.AssignedSubject)
                         .ThenInclude(a => a.Faculty)
-                    .Where(se => se.Student.Department == "CSEDS" || se.Student.Department == "CSE(DS)")
+                    .Where(se => se.Student.Department == "CSE(DS)" || se.Student.Department == "CSEDS")
                     .OrderByDescending(se => se.StudentEnrollmentId)
                     .Take(10)
                     .Select(se => new EnrollmentActivityDto
@@ -199,13 +199,13 @@ namespace TutorLiveMentor.Controllers
 
                 // Get all department faculty for management
                 DepartmentFaculty = await _context.Faculties
-                    .Where(f => f.Department == "CSEDS" || f.Department == "CSE(DS)")
+                    .Where(f => f.Department == "CSE(DS)" || f.Department == "CSEDS")
                     .OrderBy(f => f.Name)
                     .ToListAsync(),
 
                 // Get all department subjects for management
                 DepartmentSubjects = await _context.Subjects
-                    .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+                    .Where(s => s.Department == "CSE(DS)" || s.Department == "CSEDS")
                     .OrderBy(s => s.Year)
                     .ThenBy(s => s.Name)
                     .ToListAsync(),
@@ -278,22 +278,22 @@ namespace TutorLiveMentor.Controllers
 
             try
             {
-                // Verify subject belongs to CSEDS department
+                // Verify subject belongs to CSE(DS) department
                 var subject = await _context.Subjects
                     .FirstOrDefaultAsync(s => s.SubjectId == request.SubjectId &&
-                                            (s.Department == "CSEDS" || s.Department == "CSE(DS)"));
+                                            (s.Department == "CSE(DS)" || s.Department == "CSEDS"));
 
                 if (subject == null)
-                    return BadRequest("Subject not found or does not belong to CSEDS department");
+                    return BadRequest("Subject not found or does not belong to CSE(DS) department");
 
-                // Verify faculty belongs to CSEDS department
+                // Verify faculty belongs to CSE(DS) department
                 var faculty = await _context.Faculties
                     .Where(f => request.FacultyIds.Contains(f.FacultyId) &&
-                              (f.Department == "CSEDS" || f.Department == "CSE(DS)"))
+                              (f.Department == "CSE(DS)" || f.Department == "CSEDS"))
                     .ToListAsync();
 
                 if (faculty.Count != request.FacultyIds.Count)
-                    return BadRequest("One or more faculty members not found or do not belong to CSEDS department");
+                    return BadRequest("One or more faculty members not found or do not belong to CSE(DS) department");
 
                 // Remove existing assignments for this subject
                 var existingAssignments = await _context.AssignedSubjects
@@ -309,7 +309,7 @@ namespace TutorLiveMentor.Controllers
                     {
                         FacultyId = facultyId,
                         SubjectId = request.SubjectId,
-                        Department = "CSEDS",
+                        Department = "CSE(DS)",  // Changed from "CSEDS"
                         Year = subject.Year,
                         SelectedCount = 0
                     };
@@ -624,23 +624,23 @@ namespace TutorLiveMentor.Controllers
                 DatabaseStats = new
                 {
                     StudentsCount = await _context.Students
-                        .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+                        .Where(s => s.Department == "CSEEDS" || s.Department == "CSE(DS)")
                         .CountAsync(),
                     FacultiesCount = await _context.Faculties
-                        .Where(f => f.Department == "CSEDS" || f.Department == "CSE(DS)")
+                        .Where(f => f.Department == "CSEEDS" || f.Department == "CSE(DS)")
                         .CountAsync(),
                     SubjectsCount = await _context.Subjects
-                        .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+                        .Where(s => s.Department == "CSEEDS" || s.Department == "CSE(DS)")
                         .CountAsync(),
                     EnrollmentsCount = await _context.StudentEnrollments
                         .Include(se => se.Student)
-                        .Where(se => se.Student.Department == "CSEDS" || se.Student.Department == "CSE(DS)")
+                        .Where(se => se.Student.Department == "CSEEDS" || se.Student.Department == "CSE(DS)")
                         .CountAsync()
                 },
                 RecentActivity = new
                 {
                     RecentStudents = await _context.Students
-                        .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+                        .Where(s => s.Department == "CSEEDS" || s.Department == "CSE(DS)")
                         .OrderByDescending(s => s.Id)
                         .Take(5)
                         .Select(s => new { s.FullName, s.Email, s.Department, s.Year })
@@ -651,7 +651,7 @@ namespace TutorLiveMentor.Controllers
                             .ThenInclude(a => a.Subject)
                         .Include(se => se.AssignedSubject)
                             .ThenInclude(a => a.Faculty)
-                        .Where(se => se.Student.Department == "CSEDS" || se.Student.Department == "CSE(DS)")
+                        .Where(se => se.Student.Department == "CSEEDS" || se.Student.Department == "CSE(DS)")
                         .OrderByDescending(se => se.StudentEnrollmentId)
                         .Take(10)
                         .Select(se => new
@@ -686,7 +686,7 @@ namespace TutorLiveMentor.Controllers
                 Name = model.Name,
                 Email = model.Email,
                 Password = model.Password,
-                Department = "CSEDS"
+                Department = "CSE(DS)"  // Changed from "CSEDS"
             };
 
             _context.Faculties.Add(faculty);
@@ -700,7 +700,7 @@ namespace TutorLiveMentor.Controllers
                     {
                         FacultyId = faculty.FacultyId,
                         SubjectId = subjectId,
-                        Department = "CSEDS",
+                        Department = "CSE(DS)",  // Changed from "CSEDS"
                         Year = 1,
                         SelectedCount = 0
                     };
@@ -709,7 +709,7 @@ namespace TutorLiveMentor.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            await _signalRService.NotifyUserActivity(HttpContext.Session.GetString("AdminEmail") ?? "", "Admin", "Faculty Added", $"New CSEDS faculty member {faculty.Name} added to the system");
+            await _signalRService.NotifyUserActivity(HttpContext.Session.GetString("AdminEmail") ?? "", "Admin", "Faculty Added", $"New CSE(DS) faculty member {faculty.Name} added to the system");
 
             return Ok(new { success = true, message = "Faculty added successfully" });
         }
@@ -809,7 +809,7 @@ namespace TutorLiveMentor.Controllers
                     .FirstOrDefaultAsync(s => s.Name == model.Name && 
                                             s.Year == model.Year && 
                                             s.Semester == model.Semester &&
-                                            (s.Department == "CSEDS" || s.Department == "CSE(DS)"));
+                                            (s.Department == "CSE(DS)" || s.Department == "CSEDS"));
 
                 if (existingSubject != null)
                     return Json(new { success = false, message = "A subject with this name already exists for the selected year and semester" });
@@ -817,7 +817,7 @@ namespace TutorLiveMentor.Controllers
                 var subject = new Subject
                 {
                     Name = model.Name,
-                    Department = "CSEDS",
+                    Department = "CSE(DS)",  // Changed from "CSEDS"
                     Year = model.Year,
                     Semester = model.Semester,
                     SemesterStartDate = model.SemesterStartDate,
@@ -831,7 +831,7 @@ namespace TutorLiveMentor.Controllers
                     HttpContext.Session.GetString("AdminEmail") ?? "",
                     "Admin",
                     "Subject Added",
-                    $"New CSEDS subject added: {subject.Name} (Year {subject.Year}, {subject.Semester})"
+                    $"New CSE(DS) subject added: {subject.Name} (Year {subject.Year}, {subject.Semester})"
                 );
 
                 return Json(new { success = true, message = "Subject added successfully" });

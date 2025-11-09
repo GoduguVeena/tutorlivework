@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using TutorLiveMentor.Helpers;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -39,6 +40,9 @@ namespace TutorLiveMentor.Controllers
             {
                 // Convert registration number to uppercase on server side as well
                 model.RegdNumber = model.RegdNumber?.ToUpper();
+                
+                // ? CRITICAL FIX: Normalize department name to prevent CSE(DS) vs CSEDS mismatch
+                model.Department = DepartmentNormalizer.Normalize(model.Department);
                 
                 // Check if student with this registration number already exists
                 if (await _context.Students.AnyAsync(s => s.Id == model.RegdNumber))
@@ -331,11 +335,11 @@ namespace TutorLiveMentor.Controllers
 
                     Console.WriteLine($"SelectSubject POST - Current enrollment count: {currentCount}");
 
-                    if (currentCount >= 20)
+                    if (currentCount >= 30)
                     {
-                        Console.WriteLine("SelectSubject POST - Subject is full (20 students)");
+                        Console.WriteLine("SelectSubject POST - Subject is full (30 students)");
                         await transaction.RollbackAsync();
-                        TempData["ErrorMessage"] = "This subject is already full (maximum 20 students). Someone enrolled just before you.";
+                        TempData["ErrorMessage"] = "This subject is already full (maximum 30 students). Someone enrolled just before you.";
                         return RedirectToAction("SelectSubject");
                     }
 
@@ -368,7 +372,7 @@ namespace TutorLiveMentor.Controllers
                     await _signalRService.NotifySubjectSelection(assignedSubject, student);
 
                     // Check if subject is now full and notify availability change
-                    if (assignedSubject.SelectedCount >= 20)
+                    if (assignedSubject.SelectedCount >= 30)
                     {
                         await _signalRService.NotifySubjectAvailability(
                             assignedSubject.Subject.Name, 
@@ -429,14 +433,14 @@ namespace TutorLiveMentor.Controllers
 
             if (assignedSubject != null)
             {
-                var wasFullBefore = assignedSubject.SelectedCount >= 20;
+                var wasFullBefore = assignedSubject.SelectedCount >= 30;
                 assignedSubject.SelectedCount = Math.Max(0, assignedSubject.SelectedCount - 1);
 
                 // ?? REAL-TIME NOTIFICATION: Notify all connected users about the unenrollment
                 await _signalRService.NotifySubjectUnenrollment(assignedSubject, student);
 
                 // If subject was full and now has space, notify availability change
-                if (wasFullBefore && assignedSubject.SelectedCount < 20)
+                if (wasFullBefore && assignedSubject.SelectedCount < 30)
                 {
                     await _signalRService.NotifySubjectAvailability(
                         assignedSubject.Subject.Name, 
@@ -595,7 +599,7 @@ namespace TutorLiveMentor.Controllers
                    .Include(a => a.Faculty)
                    .Where(a => a.Year == studentYear 
                             && a.Department == student.Department  // ADDED: Department filter
-                            && a.SelectedCount < 20)
+                            && a.SelectedCount < 30)
                    .ToListAsync();
 
                 Console.WriteLine($"SelectSubject GET - Found {availableSubjects.Count} subjects for Year={studentYear}, Department={student.Department}");

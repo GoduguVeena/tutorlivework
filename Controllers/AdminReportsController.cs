@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TutorLiveMentor.Models;
+using TutorLiveMentor.Helpers;
 using OfficeOpenXml;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
@@ -17,13 +18,16 @@ namespace TutorLiveMentor.Controllers
         }
 
         /// <summary>
-        /// Helper method to check if department is CSEDS
+        /// Helper method to check if department is CSE(DS)
+        /// Uses DepartmentNormalizer for consistent handling across the application
         /// </summary>
         private bool IsCSEDSDepartment(string department)
         {
             if (string.IsNullOrEmpty(department)) return false;
-            var normalizedDept = department.ToUpper().Replace("(", "").Replace(")", "").Replace(" ", "").Replace("-", "").Trim();
-            return normalizedDept == "CSEDS";
+            
+            // Use DepartmentNormalizer to ensure consistent handling
+            var normalized = DepartmentNormalizer.Normalize(department);
+            return normalized == "CSE(DS)";
         }
 
         /// <summary>
