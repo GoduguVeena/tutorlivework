@@ -34,4 +34,8 @@
     <Folder Include="wwwroot\NewFolder\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include=".github\workflows\azure-deploy.yml" />
+  </ItemGroup>
+
 </Project>

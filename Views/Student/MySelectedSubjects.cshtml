@@ -388,8 +388,6 @@
                     <div class="subject-card">
                         <div class="subject-header">
                             <div class="subject-icon">📚</div>
-
-
                             <div class="subject-info">
                                 <h3>@enrollment.AssignedSubject.Subject.Name</h3>
                                 <div class="subject-year">@enrollment.AssignedSubject.Department</div>
@@ -407,7 +405,9 @@
                             </div>
                             <div class="detail-item" style="grid-column: 1 / -1;">
                                 <i class="fas fa-clock detail-icon"></i>
-                                <span class="detail-text">Enrolled: <strong>@enrollment.EnrolledAt.ToLocalTime().ToString("MMM dd, yyyy hh:mm:ss.fff tt")</strong></span>
+                                <span class="detail-text">
+                                    Enrolled: <strong data-enrollment-time="@enrollment.EnrolledAt.ToString("o")"></strong>
+                                </span>
                             </div>
                             <div class="faculty-info">
                                 <i class="fas fa-chalkboard-teacher detail-icon"></i>
@@ -430,5 +430,49 @@
             </div>
         }
     </div>
+
+    <script>
+        // Format enrollment time correctly with milliseconds
+        function formatEnrollmentTime(enrolledAt) {
+            if (!enrolledAt) return 'N/A';
+            
+            // Ensure proper UTC parsing by adding 'Z' if not present
+            let dateString = enrolledAt;
+            if (!dateString.endsWith('Z') && !dateString.includes('+')) {
+                dateString = dateString + 'Z'; // Force UTC interpretation
+            }
+            
+            // Parse as UTC and convert to local time
+            const date = new Date(dateString);
+            
+            // Format date part (MM/DD/YYYY or DD/MM/YYYY based on locale)
+            const datePart = date.toLocaleDateString();
+            
+            // Format time part with seconds (HH:MM:SS AM/PM)
+            const timePart = date.toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                hour12: true 
+            });
+            
+            // Get milliseconds
+            const milliseconds = date.getMilliseconds().toString().padStart(3, '0');
+            
+            // Return formatted string: "11/14/2025 01:48:18 PM.073"
+            return `${datePart} ${timePart}.${milliseconds}`;
+        }
+
+        // On page load, format all enrollment times
+        document.addEventListener('DOMContentLoaded', function() {
+            const enrollmentTimeElements = document.querySelectorAll('[data-enrollment-time]');
+            
+            enrollmentTimeElements.forEach(element => {
+                const utcTime = element.getAttribute('data-enrollment-time');
+                const formattedTime = formatEnrollmentTime(utcTime);
+                element.textContent = formattedTime;
+            });
+        });
+    </script>
 </body>
 </html>
