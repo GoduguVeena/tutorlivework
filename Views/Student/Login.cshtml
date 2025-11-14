@@ -12,7 +12,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Student Login - TutorLiveMentor</title>
     <link href="https://fonts.googleapis.com/css?family=Montserrat:700,400&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
         :root {
             --royal-blue: #274060;
@@ -24,29 +23,32 @@
             --error-red: #dc3545;
         }
 
+        html, body {
+            height: 100%;
+        }
+
         body {
             min-height: 100vh;
             margin: 0;
             padding: 0;
             font-family: 'Montserrat', Arial, sans-serif;
-            background: linear-gradient(rgba(249, 250, 242, 0.15), rgba(255, 200, 87, 0.10)),
-            url('@Url.Content("~/images/RGMCET-BACKGROUND.jpg")') center center/cover no-repeat fixed;
+            background: linear-gradient(rgba(249, 250, 242, 0.15), rgba(255, 200, 87, 0.10)), url('@Url.Content("~/images/RGMCET-BACKGROUND.jpg")') center center/cover no-repeat fixed;
             position: relative;
         }
 
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 0;
-            display: block;
-            background: linear-gradient(135deg, var(--cream) 60%, var(--warm-gold) 100%);
-            opacity: 0.20;
-            pointer-events: none;
-        }
+            body::before {
+                content: "";
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 0;
+                display: block;
+                background: linear-gradient(135deg, var(--cream) 60%, var(--warm-gold) 100%);
+                opacity: 0.20;
+                pointer-events: none;
+            }
 
         .glass-card {
             background: rgba(249,250,242,0.92);
@@ -57,7 +59,7 @@
             backdrop-filter: blur(12px);
             max-width: 420px;
             width: 90vw;
-            margin: 120px auto 0 auto;
+            margin: 120px auto 40px auto;
             position: relative;
             z-index: 1;
             border: 2px solid var(--slate);
@@ -117,40 +119,55 @@
             box-sizing: border-box;
         }
 
-        input[type="email"]:focus, input[type="password"]:focus, input[type="text"]:focus {
-            outline: none;
-            border-color: var(--warm-gold);
-            box-shadow: 0 0 0 3px rgba(255, 200, 87, 0.2);
-        }
+            input[type="email"]:focus, input[type="password"]:focus, input[type="text"]:focus {
+                outline: none;
+                border-color: var(--warm-gold);
+                box-shadow: 0 0 0 3px rgba(255, 200, 87, 0.2);
+            }
 
         .password-container {
             position: relative;
             display: block;
+            overflow: visible; /* ensure toggle isn't clipped */
         }
 
-        .password-container input {
-            width: 100%;
-            padding-right: 45px; /* Make room for the eye icon */
-            box-sizing: border-box;
-        }
+            .password-container input {
+                width: 100%;
+                padding-right: 56px; /* room for toggle */
+                box-sizing: border-box;
+            }
 
         .password-toggle {
             position: absolute;
-            right: 12px;
+            right: 10px;
             top: 50%;
             transform: translateY(-50%);
-            background: none;
+            background: transparent;
             border: none;
             cursor: pointer;
-            font-size: 18px;
-            z-index: 2;
-            width: 30px;
-            height: 30px;
+            font-size: 16px;
+            z-index: 9999;
+            width: 44px;
+            height: 44px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: var(--royal-blue);
+            padding: 0;
+            line-height: 1;
+            border-radius: 8px;
         }
+
+            .password-toggle:hover {
+                color: var(--warm-gold);
+                background: rgba(255,255,255,0.04);
+            }
+
+            .password-toggle svg {
+                width: 20px;
+                height: 20px;
+                display: block;
+            }
 
         .glass-btn {
             width: 100%;
@@ -172,13 +189,13 @@
             gap: 8px;
         }
 
-        .glass-btn:hover {
-            box-shadow: 0 16px 32px var(--warm-gold);
-            background: linear-gradient(90deg, var(--warm-gold) 62%, var(--royal-blue) 100%);
-            color: var(--royal-blue);
-            transform: translateY(-3px);
-            border: 2px solid var(--royal-blue);
-        }
+            .glass-btn:hover {
+                box-shadow: 0 16px 32px var(--warm-gold);
+                background: linear-gradient(90deg, var(--warm-gold) 62%, var(--royal-blue) 100%);
+                color: var(--royal-blue);
+                transform: translateY(-3px);
+                border: 2px solid var(--royal-blue);
+            }
 
         .validation-summary {
             background: rgba(220, 53, 69, 0.1);
@@ -210,89 +227,102 @@
             border: 1px solid var(--slate);
             backdrop-filter: blur(8px);
             transition: all 0.3s ease;
+            z-index: 2;
         }
 
-        .nav-link:hover {
-            background: var(--warm-gold);
-            color: var(--royal-blue);
-            transform: translateY(-2px);
-            text-decoration: none;
-        }
+            .nav-link:hover {
+                background: var(--warm-gold);
+                color: var(--royal-blue);
+                transform: translateY(-2px);
+                text-decoration: none;
+            }
 
         .register-link {
             margin-top: 20px;
             text-align: center;
         }
 
-        .register-link a {
-            color: var(--royal-blue);
-            text-decoration: none;
-            font-weight: 600;
-            transition: color 0.3s;
+            .register-link a {
+                color: var(--royal-blue);
+                text-decoration: none;
+                font-weight: 600;
+                transition: color 0.3s;
+            }
+
+                .register-link a:hover {
+                    color: var(--warm-gold);
+                    text-decoration: none;
+                }
+
+        media (max-width: 768px) {
+            .glass-card
+
+        {
+            margin: 60px auto 20px auto;
+            padding: 40px 20px 30px 20px;
         }
 
-        .register-link a:hover {
-            color: var(--warm-gold);
-            text-decoration: none;
+        h2 {
+            font-size: 1.6em;
         }
 
-        @@media (max-width: 768px) {
-            .glass-card {
-                margin: 60px auto 0 auto;
-                padding: 40px 25px 30px 25px;
-            }
+        .nav-link {
+            position: static;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
 
-            h2 {
-                font-size: 1.6em;
-            }
-
-            .nav-link {
-                position: static;
-                margin-bottom: 20px;
-                display: inline-block;
-            }
         }
     </style>
 </head>
 <body>
-    <a href="@Url.Action("Index", "Student")" class="nav-link"><i class="fas fa-arrow-left"></i> Back to Student</a>
-    
-    <div class="glass-card">
+    <a href="@Url.Action("Index", "Student")" class="nav-link">← Back to Student</a>
+
+    <div class="glass-card" role="main" aria-labelledby="loginHeading">
         <img src="~/images/RGMCET.jpg" alt="RGMCET Logo" class="logo" />
-        <h2><i class="fas fa-user-graduate"></i> Student Login</h2>
+        <h2 id="loginHeading"><!-- small icon kept purely decorative --> Student Login</h2>
 
         @if (TempData["SuccessMessage"] != null)
         {
-            <div class="success-message">
-                <i class="fas fa-check-circle"></i> @TempData["SuccessMessage"]
+            <div class="success-message" role="status">
+                @TempData["SuccessMessage"]
             </div>
         }
 
-        <form asp-action="Login" method="post">
+        <form asp-action="Login" method="post" novalidate>
             @if (!ViewData.ModelState.IsValid && ViewData.ModelState.ErrorCount > 0)
             {
-                <div asp-validation-summary="All" class="validation-summary"></div>
+                <div asp-validation-summary="All" class="validation-summary" role="alert"></div>
             }
 
             <div class="form-group">
-                <label><i class="fas fa-envelope"></i> Email Address:</label>
-                <input asp-for="Email" type="email" required />
-                <span asp-validation-for="Email" class="field-validation-error"></span>
+                <label for="Email"><span style="display:inline-block;margin-right:6px;"></span>Email Address:</label>
+                <input asp-for="Email" id="Email" type="email" required />
+                <span asp-validation-for="Email" class="field-validation-error" aria-live="polite"></span>
             </div>
 
             <div class="form-group">
-                <label><i class="fas fa-lock"></i> Password:</label>
+                <label for="password"><span style="display:inline-block;margin-right:6px;"></span>Password:</label>
                 <div class="password-container">
-                    <input asp-for="Password" type="password" id="password" required />
-                    <button type="button" class="password-toggle" onclick="togglePassword()">
-                        <i class="fas fa-eye" id="eye"></i>
+                    <input asp-for="Password" type="password" id="password" required autocomplete="current-password" />
+                    <!-- Toggle button uses inline SVGs; closed-eye is hidden initially with inline style -->
+                    <button type="button" class="password-toggle" aria-pressed="false" aria-label="Show password" onclick="togglePassword()">
+                        <!-- Eye (visible when password is hidden) -->
+                        <svg id="eye-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" role="img" title="Show">
+                            <path fill="currentColor" d="M572.52 241.4C518.1 135.9 407 64 288 64 169 64 57.9 135.9 3.48 241.4a48.21 48.21 0 0 0 0 29.2C57.9 376.1 169 448 288 448s230.1-71.9 284.52-177.4a48.21 48.21 0 0 0 0-29.2zM288 400c-88.37 0-168.3-50.66-210.07-128C119.7 194.7 199.6 144 288 144s168.3 50.66 210.07 128C456.3 349.3 376.4 400 288 400zM288 176a112 112 0 1 0 112 112A112 112 0 0 0 288 176z" />
+                        </svg>
+
+                        <!-- Eye-slash (hidden initially) -->
+                        <svg id="eye-closed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" role="img" title="Hide" style="display:none;">
+                            <path fill="currentColor" d="M634 471L54 3a16 16 0 0 0-22.8 1.6L1.6 29.4A16 16 0 0 0 3 52l73.2 55C30.9 169.6-3.7 216.7 .8 256c7 64.2 119.9 208 287.2 208 79.6 0 150.6-26.1 204.3-64.7l96.3 76.2a16 16 0 0 0 22.2-1.5l28.6-24.8a16 16 0 0 0-1.5-22.2zM288 400c-88.4 0-168.3-50.7-210.1-128 23.8-46.4 61.9-83.5 106.1-106.4L352 344c-25.4 23-58.6 40-104 40z" />
+                        </svg>
                     </button>
                 </div>
-                <span asp-validation-for="Password" class="field-validation-error"></span>
+                <span asp-validation-for="Password" class="field-validation-error" aria-live="polite"></span>
             </div>
 
             <button type="submit" class="glass-btn">
-                <i class="fas fa-sign-in-alt"></i> Login
+                Login
             </button>
         </form>
 
@@ -304,23 +334,43 @@
     <script type="text/javascript">
         function togglePassword() {
             var pwd = document.getElementById("password");
-            var eye = document.getElementById("eye");
+            var eyeOpen = document.getElementById("eye-open");
+            var eyeClosed = document.getElementById("eye-closed");
+            var btn = document.querySelector('.password-toggle');
+
+            if (!pwd) return;
+
             if (pwd.type === "password") {
                 pwd.type = "text";
-                eye.className = "fas fa-eye-slash";
+                if (eyeOpen) eyeOpen.style.display = 'none';
+                if (eyeClosed) eyeClosed.style.display = 'block';
+                btn.setAttribute('aria-pressed', 'true');
+                btn.setAttribute('aria-label', 'Hide password');
             } else {
                 pwd.type = "password";
-                eye.className = "fas fa-eye";
+                if (eyeClosed) eyeClosed.style.display = 'none';
+                if (eyeOpen) eyeOpen.style.display = 'block';
+                btn.setAttribute('aria-pressed', 'false');
+                btn.setAttribute('aria-label', 'Show password');
             }
         }
 
-        // Debug: Log form submission
-        document.querySelector('form').addEventListener('submit', function(e) {
-            console.log('Form submitted with:', {
-                email: document.querySelector('[name="Email"]').value,
-                password: document.querySelector('[name="Password"]').value ? 'provided' : 'empty'
-            });
-        });
+        // Debug: Log form submission (remove in production)
+        (function() {
+            var form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    try {
+                        console.log('Form submitted with:', {
+                            email: document.querySelector('[name="Email"]').value,
+                            password: document.querySelector('[name="Password"]').value ? 'provided' : 'empty'
+                        });
+                    } catch (ex) {
+                        // ignore
+                    }
+                });
+            }
+        })();
     </script>
 </body>
 </html>
