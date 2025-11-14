@@ -16,28 +16,28 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: ?? Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: ?? Setup .NET
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: ?? Restore dependencies
+      - name: Restore dependencies
         run: dotnet restore ${{ env.PROJECT_PATH }}
 
-      - name: ?? Build application
+      - name: Build application
         run: dotnet build ${{ env.PROJECT_PATH }} --configuration Release --no-restore
 
-      - name: ?? Run tests (if any)
+      - name: Run tests
         run: dotnet test --no-build --verbosity normal --configuration Release
         continue-on-error: true
 
-      - name: ?? Publish application
+      - name: Publish application
         run: dotnet publish ${{ env.PROJECT_PATH }} -c Release -o ./publish
 
-      - name: ?? Upload artifact for deployment
+      - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
@@ -51,12 +51,12 @@ jobs:
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     
     steps:
-      - name: ?? Download artifact from build job
+      - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: .net-app
 
-      - name: ?? Deploy to Azure Web App
+      - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
@@ -64,7 +64,7 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: .
 
-      - name: ? Wait for deployment to stabilize
+      - name: Wait for deployment to stabilize
         run: sleep 30
 
   migrate:
@@ -72,24 +72,24 @@ jobs:
     needs: deploy
     
     steps:
-      - name: ?? Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: ?? Setup .NET
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: ?? Install EF Core tools
+      - name: Install EF Core tools
         run: dotnet tool install --global dotnet-ef --version 8.0.*
 
-      - name: ?? Restore dependencies
+      - name: Restore dependencies
         run: dotnet restore ${{ env.PROJECT_PATH }}
 
-      - name: ?? Build project for migrations
+      - name: Build project for migrations
         run: dotnet build ${{ env.PROJECT_PATH }} --configuration Release --no-restore
 
-      - name: ??? Apply EF Core Migrations to Azure SQL
+      - name: Apply EF Core Migrations to Azure SQL
         run: |
           echo "==========================================="
           echo "Applying migrations to Azure SQL Database"
@@ -98,10 +98,10 @@ jobs:
         env:
           ASPNETCORE_ENVIRONMENT: Production
 
-      - name: ? Verify migration success
+      - name: Verify migration success
         run: |
           echo "==========================================="
-          echo "? Database migrations applied successfully!"
+          echo "Database migrations applied successfully"
           echo "==========================================="
 
   verify:
@@ -109,7 +109,7 @@ jobs:
     needs: migrate
     
     steps:
-      - name: ?? Health check
+      - name: Health check
         run: |
           echo "==========================================="
           echo "Performing Health Check..."
@@ -122,7 +122,7 @@ jobs:
             
             if [ "$STATUS" = "200" ]; then
               echo "==========================================="
-              echo "? SUCCESS! Application is healthy!"
+              echo "SUCCESS! Application is healthy!"
               echo "==========================================="
               exit 0
             fi
@@ -132,31 +132,31 @@ jobs:
           done
           
           echo "==========================================="
-          echo "??  Health check incomplete after 10 attempts"
+          echo "Health check incomplete after 10 attempts"
           echo "Please check manually at:"
           echo "https://${{ env.AZURE_WEBAPP_NAME }}-g5hyh0drgqfjbchf.centralindia-01.azurewebsites.net"
           echo "==========================================="
 
-      - name: ?? Deployment Summary
+      - name: Deployment Summary
         if: always()
         run: |
           echo ""
-          echo "?????????????????????????????????????????????"
-          echo "?      DEPLOYMENT COMPLETED                 ?"
-          echo "?????????????????????????????????????????????"
+          echo "=========================================="
+          echo "      DEPLOYMENT COMPLETED"
+          echo "=========================================="
           echo ""
-          echo "?? Application URL:"
+          echo "Application URL:"
           echo "   https://${{ env.AZURE_WEBAPP_NAME }}-g5hyh0drgqfjbchf.centralindia-01.azurewebsites.net"
           echo ""
-          echo "?? Health Check:"
+          echo "Health Check:"
           echo "   https://${{ env.AZURE_WEBAPP_NAME }}-g5hyh0drgqfjbchf.centralindia-01.azurewebsites.net/health"
           echo ""
-          echo "?? Home Page:"
+          echo "Home Page:"
           echo "   https://${{ env.AZURE_WEBAPP_NAME }}-g5hyh0drgqfjbchf.centralindia-01.azurewebsites.net"
           echo ""
-          echo "?? Admin Login:"
+          echo "Admin Login:"
           echo "   https://${{ env.AZURE_WEBAPP_NAME }}-g5hyh0drgqfjbchf.centralindia-01.azurewebsites.net/Admin/Login"
           echo "   Email: cseds@rgmcet.edu.in"
           echo "   Password: admin123"
           echo ""
-          echo "==========================================="
+          echo "=========================================="
