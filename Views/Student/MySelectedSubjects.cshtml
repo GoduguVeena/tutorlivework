@@ -432,7 +432,7 @@
     </div>
 
     <script>
-        // Format enrollment time correctly with milliseconds
+        // Format enrollment time correctly with milliseconds - MATCH SERVER FORMAT
         function formatEnrollmentTime(enrolledAt) {
             if (!enrolledAt) return 'N/A';
             
@@ -445,22 +445,23 @@
             // Parse as UTC and convert to local time
             const date = new Date(dateString);
             
-            // Format date part (MM/DD/YYYY or DD/MM/YYYY based on locale)
-            const datePart = date.toLocaleDateString();
+            // Format to match server-side format: MM/dd/yyyy hh:mm:ss.fff tt
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const year = date.getFullYear();
             
-            // Format time part with seconds (HH:MM:SS AM/PM)
-            const timePart = date.toLocaleTimeString([], { 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                second: '2-digit',
-                hour12: true 
-            });
+            let hours = date.getHours();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // 0 should be 12
+            const hoursStr = String(hours).padStart(2, '0');
             
-            // Get milliseconds
-            const milliseconds = date.getMilliseconds().toString().padStart(3, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            const milliseconds = String(date.getMilliseconds()).padStart(3, '0');
             
-            // Return formatted string: "11/14/2025 01:48:18 PM.073"
-            return `${datePart} ${timePart}.${milliseconds}`;
+            // Return formatted string matching server format: "11/14/2025 04:34:25.727 PM"
+            return `${month}/${day}/${year} ${hoursStr}:${minutes}:${seconds}.${milliseconds} ${ampm}`;
         }
 
         // On page load, format all enrollment times
