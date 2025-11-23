@@ -31,31 +31,163 @@
             margin: 0;
             padding: 20px 0;
             font-family: 'Montserrat', Arial, sans-serif;
-            background: linear-gradient(rgba(249, 250, 242, 0.15), rgba(255, 200, 87, 0.10)),
-            url('@Url.Content("~/images/RGMCET-BACKGROUND.jpg")') center center/cover no-repeat fixed;
+            background: linear-gradient(rgba(249, 250, 242, 0.15), rgba(255, 200, 87, 0.10)), url('@Url.Content("~/images/RGMCET-BACKGROUND.jpg")') center center/cover no-repeat fixed;
             position: relative;
         }
 
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 0;
-            display: block;
-            background: linear-gradient(135deg, var(--cream) 60%, var(--warm-gold) 100%);
-            opacity: 0.20;
-            pointer-events: none;
-        }
+            body::before {
+                content: "";
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 0;
+                display: block;
+                background: linear-gradient(135deg, var(--cream) 60%, var(--warm-gold) 100%);
+                opacity: 0.20;
+                pointer-events: none;
+            }
 
         .main-container {
             position: relative;
             z-index: 1;
             max-width: 1000px;
             margin: 0 auto;
-            padding: 0 20px 40px 20px;
+            padding: 0 20px;
+        }
+
+        /* Modal Overlay Styling - Enhanced */
+        .modal {
+            display: none !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 9999 !important;
+            overflow: hidden !important;
+        }
+
+            .modal.show {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                background-color: rgba(39, 64, 96, 0.75) !important;
+                backdrop-filter: blur(4px) !important;
+                animation: fadeIn 0.2s ease-out;
+            }
+
+        @@keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal-backdrop {
+            display: none !important;
+        }
+
+        .modal-dialog {
+            position: relative !important;
+            z-index: 10000 !important;
+            margin: 20px !important;
+            max-width: 600px !important;
+            width: 100% !important;
+            max-height: 90vh !important;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @@keyframes slideDown {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-content {
+            border-radius: 24px !important;
+            border: none !important;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+            background: white !important;
+            overflow: hidden !important;
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--cseds-purple), var(--cseds-teal)) !important;
+            color: white !important;
+            border-radius: 0 !important;
+            padding: 25px 40px !important;
+            border-bottom: none !important;
+            position: relative !important;
+        }
+
+            .modal-header::after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+            }
+
+            .modal-header h5 {
+                margin: 0 !important;
+                font-weight: 700 !important;
+                font-size: 1.5rem !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 12px !important;
+            }
+
+                .modal-header h5 i {
+                    font-size: 1.3rem !important;
+                    opacity: 0.9 !important;
+                }
+
+        .modal-body {
+            padding: 40px !important;
+            background: white !important;
+            max-height: calc(90vh - 200px) !important;
+            overflow-y: auto !important;
+        }
+
+            .modal-body::-webkit-scrollbar {
+                width: 8px;
+            }
+
+            .modal-body::-webkit-scrollbar-track {
+                background: #f1f1f1;
+                border-radius: 10px;
+            }
+
+            .modal-body::-webkit-scrollbar-thumb {
+                background: var(--cseds-purple);
+                border-radius: 10px;
+            }
+
+                .modal-body::-webkit-scrollbar-thumb:hover {
+                    background: var(--cseds-teal);
+                }
+
+        .modal-footer {
+            padding: 25px 40px !important;
+            background: #f8f9fa !important;
+            border-radius: 0 !important;
+            border-top: 1px solid #e9ecef !important;
+            display: flex !important;
+            gap: 12px !important;
+            justify-content: flex-end !important;
         }
 
         .profile-header {
@@ -69,25 +201,25 @@
             border: 2px solid var(--slate);
         }
 
-        .profile-header h1 {
-            font-size: 2.5em;
-            font-weight: 700;
-            color: var(--royal-blue);
-            margin: 0 0 10px 0;
-            letter-spacing: 1.2px;
-        }
+            .profile-header h1 {
+                font-size: 2.5em;
+                font-weight: 700;
+                color: var(--royal-blue);
+                margin: 0 0 10px 0;
+                letter-spacing: 1.2px;
+            }
 
-        .profile-header p {
-            color: #666;
-            font-size: 1.2em;
-            margin: 0;
-        }
+            .profile-header p {
+                color: #666;
+                font-size: 1.2em;
+                margin: 0;
+            }
 
         .profile-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 30px;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
 
         .profile-card {
@@ -101,15 +233,15 @@
             overflow: hidden;
         }
 
-        .profile-card::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 6px;
-            background: linear-gradient(135deg, var(--cseds-purple), var(--cseds-teal));
-        }
+            .profile-card::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 6px;
+                background: linear-gradient(135deg, var(--cseds-purple), var(--cseds-teal));
+            }
 
         .card-title {
             color: var(--royal-blue);
@@ -126,40 +258,55 @@
         }
 
         .form-label {
-            font-weight: 600;
-            color: var(--royal-blue);
-            margin-bottom: 8px;
-            display: block;
+            font-weight: 600 !important;
+            color: var(--royal-blue) !important;
+            margin-bottom: 10px !important;
+            font-size: 0.95rem !important;
+            display: block !important;
         }
+
+            .form-label small {
+                font-weight: 400 !important;
+                color: #6c757d !important;
+                font-size: 0.85rem !important;
+            }
 
         .form-control {
             border: 2px solid var(--slate);
-            border-radius: 12px;
-            padding: 12px 15px;
-            font-size: 1em;
-            transition: all 0.3s ease;
+            border-radius: 12px !important;
+            padding: 14px 18px !important;
+            font-size: 1em !important;
+            transition: all 0.3s ease !important;
+            background: #fafafa !important;
+            width: 100% !important;
         }
 
-        .form-control:focus {
-            border-color: var(--cseds-purple);
-            box-shadow: 0 0 0 0.2rem rgba(111, 66, 193, 0.25);
-            outline: none;
-        }
+            .form-control:hover {
+                border-color: #d0d0d0 !important;
+                background: white !important;
+            }
 
-        .form-control:read-only {
-            background-color: #f8f9fa;
-            cursor: not-allowed;
-        }
+            .form-control:focus {
+                border-color: var(--cseds-purple) !important;
+                box-shadow: 0 0 0 4px rgba(111, 66, 193, 0.1) !important;
+                background: white !important;
+                outline: none !important;
+            }
 
-        .form-control.is-invalid {
-            border-color: #dc3545;
-        }
+            .form-control::placeholder {
+                color: #adb5bd !important;
+                font-size: 0.95rem !important;
+            }
+
+            .form-control.is-invalid {
+                border-color: #dc3545 !important;
+            }
 
         .invalid-feedback {
-            color: #dc3545;
-            font-size: 0.875em;
-            margin-top: 0.25rem;
             display: none;
+            color: #dc3545;
+            font-size: 0.875rem;
+            margin-top: 5px;
         }
 
         .form-control.is-invalid ~ .invalid-feedback {
@@ -170,7 +317,7 @@
             background: linear-gradient(135deg, var(--cseds-purple) 0%, var(--cseds-teal) 100%);
             color: white;
             border: none;
-            border-radius: 25px;
+            border-radius: 12px !important;
             padding: 12px 25px;
             font-size: 1em;
             font-weight: 600;
@@ -186,17 +333,28 @@
             justify-content: center;
         }
 
-        .glass-btn:hover {
-            background: linear-gradient(135deg, var(--cseds-teal) 0%, var(--cseds-purple) 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(111, 66, 193, 0.4);
-            text-decoration: none;
-            color: white;
+            .glass-btn:hover {
+                background: linear-gradient(135deg, var(--cseds-teal) 0%, var(--cseds-purple) 100%);
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(111, 66, 193, 0.4);
+                text-decoration: none;
+                color: white;
+            }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d, #5a6268) !important;
+            border: none !important;
+            color: white !important;
+            border-radius: 12px !important;
+            padding: 12px 28px !important;
+            font-weight: 600 !important;
+            transition: all 0.2s !important;
         }
 
-        .glass-btn:active {
-            transform: translateY(0);
-        }
+            .btn-secondary:hover {
+                transform: translateY(-2px) !important;
+                box-shadow: 0 6px 20px rgba(108, 117, 125, 0.3) !important;
+            }
 
         .back-btn {
             background: rgba(220, 53, 69, 0.9);
@@ -214,12 +372,12 @@
             margin-bottom: 20px;
         }
 
-        .back-btn:hover {
-            background: rgba(220, 53, 69, 1);
-            transform: translateY(-2px);
-            text-decoration: none;
-            color: white;
-        }
+            .back-btn:hover {
+                background: rgba(220, 53, 69, 1);
+                transform: translateY(-2px);
+                text-decoration: none;
+                color: white;
+            }
 
         .info-item {
             display: flex;
@@ -229,10 +387,9 @@
             border-bottom: 1px solid rgba(111, 66, 193, 0.1);
         }
 
-        .info-item:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-        }
+            .info-item:last-child {
+                border-bottom: none;
+            }
 
         .info-label {
             font-weight: 600;
@@ -258,17 +415,18 @@
             border: none;
             padding: 15px 20px;
             margin-bottom: 20px;
-            animation: slideIn 0.3s ease;
+            animation: slideIn 0.3s ease-out;
         }
 
         @@keyframes slideIn {
             from {
+                transform: translateX(100%);
                 opacity: 0;
-                transform: translateY(-10px);
             }
+
             to {
+                transform: translateX(0);
                 opacity: 1;
-                transform: translateY(0);
             }
         }
 
@@ -284,46 +442,6 @@
             border-left: 4px solid #dc3545;
         }
 
-        /* Modal Styles - Matching Add Faculty Design */
-        .modal-content {
-            border-radius: 20px;
-            border: none;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-
-        .modal-header {
-            background: linear-gradient(135deg, var(--cseds-purple), var(--cseds-teal));
-            color: white;
-            border-bottom: none;
-            padding: 25px 30px;
-        }
-
-        .modal-header .modal-title {
-            font-weight: 700;
-            font-size: 1.5em;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .modal-header .btn-close {
-            background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23fff'%3e%3cpath d='M.293.293a1 1 0 011.414 0L8 6.586 14.293.293a1 1 0 111.414 1.414L9.414 8l6.293 6.293a1 1 0 01-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 01-1.414-1.414L6.586 8 .293 1.707a1 1 0 010-1.414z'/%3e%3c/svg%3e") center/1em auto no-repeat;
-            opacity: 1;
-            filter: brightness(0) invert(1);
-        }
-
-        .modal-body {
-            padding: 35px 30px;
-            background: white;
-        }
-
-        .modal-footer {
-            border-top: none;
-            padding: 0 30px 30px 30px;
-            background: white;
-        }
-
         /* Responsive Design */
         @@media (max-width: 768px) {
             .profile-content {
@@ -335,20 +453,25 @@
                 padding: 25px 20px;
             }
 
-            .profile-header h1 {
-                font-size: 2em;
-            }
+                .profile-header h1 {
+                    font-size: 2em;
+                }
 
             .profile-card {
                 padding: 20px;
             }
 
-            .modal-body {
-                padding: 20px;
+            .modal-dialog {
+                margin: 10px !important;
             }
 
+            .modal-body {
+                padding: 30px 25px !important;
+            }
+
+            .modal-header,
             .modal-footer {
-                padding: 0 20px 20px 20px;
+                padding: 20px 25px !important;
             }
         }
     </style>
@@ -391,7 +514,7 @@
                 @using (Html.BeginForm("UpdateProfile", "Admin", FormMethod.Post))
                 {
                     @Html.HiddenFor(m => m.AdminId)
-                    
+
                     <div class="form-group">
                         @Html.LabelFor(m => m.Email, new { @class = "form-label" })
                         @Html.TextBoxFor(m => m.Email, new { @class = "form-control", @type = "email", @required = "required" })
@@ -449,14 +572,13 @@
     </div>
 
     <!-- Change Password Modal -->
-    <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+    <div class="modal" id="changePasswordModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="changePasswordModalLabel">
+                    <h5 class="modal-title">
                         <i class="fas fa-lock"></i> Change Password
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <form id="changePasswordForm">
@@ -464,33 +586,28 @@
                         <input type="hidden" id="adminEmail" value="@Model.Email" />
 
                         <div class="form-group">
-                            <label for="currentPassword" class="form-label">
-                                <i class="fas fa-key"></i> Current Password
-                            </label>
-                            <input type="password" id="currentPassword" name="CurrentPassword" class="form-control" required />
-                            <div class="invalid-feedback">Current password is required</div>
+                            <label for="currentPassword" class="form-label">Current Password</label>
+                            <input type="password" id="currentPassword" name="CurrentPassword" class="form-control" placeholder="Enter your current password" required />
+                            <div class="invalid-feedback"></div>
                         </div>
 
                         <div class="form-group">
-                            <label for="newPassword" class="form-label">
-                                <i class="fas fa-lock"></i> New Password
-                            </label>
-                            <input type="password" id="newPassword" name="NewPassword" class="form-control" minlength="6" required />
-                            <div class="invalid-feedback">Password must be at least 6 characters long</div>
+                            <label for="newPassword" class="form-label">New Password</label>
+                            <input type="password" id="newPassword" name="NewPassword" class="form-control" placeholder="Enter new password" minlength="6" required />
+                            <div class="invalid-feedback"></div>
                             <small class="text-muted">Password must be at least 6 characters long</small>
                         </div>
 
                         <div class="form-group">
-                            <label for="confirmPassword" class="form-label">
-                                <i class="fas fa-check-circle"></i> Confirm New Password
-                            </label>
-                            <input type="password" id="confirmPassword" name="ConfirmPassword" class="form-control" required />
-                            <div class="invalid-feedback">Passwords must match</div>
+                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                            <input type="password" id="confirmPassword" name="ConfirmPassword" class="form-control" placeholder="Re-enter new password" required />
+                            <div class="invalid-feedback"></div>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="glass-btn" onclick="submitPasswordChange()">
+                    <button type="button" class="btn btn-secondary" onclick="closeChangePasswordModal()">Cancel</button>
+                    <button type="button" class="glass-btn" onclick="submitChangePassword()">
                         <i class="fas fa-save"></i> Change Password
                     </button>
                 </div>
@@ -503,15 +620,27 @@
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 
     <script>
+        console.log('? CSEDS Admin Profile Page Loading...');
+
         function openChangePasswordModal() {
-            const modal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
-            modal.show();
+            console.log('Opening Change Password Modal');
+            document.getElementById('changePasswordModal').classList.add('show');
         }
 
-        // Change Password Form Submission
-        async function submitPasswordChange() {
+        function closeChangePasswordModal() {
+            console.log('Closing Change Password Modal');
+            document.getElementById('changePasswordModal').classList.remove('show');
+            // Clear form and validation
+            document.getElementById('changePasswordForm').reset();
+            document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            document.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
+        }
+
+        // Submit Change Password Form
+        async function submitChangePassword() {
             // Clear previous validation
             document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            document.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
 
             const currentPassword = document.getElementById('currentPassword').value;
             const newPassword = document.getElementById('newPassword').value;
@@ -521,17 +650,23 @@
             let isValid = true;
 
             if (!currentPassword) {
-                document.getElementById('currentPassword').classList.add('is-invalid');
+                showFieldError('currentPassword', 'Current password is required');
                 isValid = false;
             }
 
-            if (!newPassword || newPassword.length < 6) {
-                document.getElementById('newPassword').classList.add('is-invalid');
+            if (!newPassword) {
+                showFieldError('newPassword', 'New password is required');
+                isValid = false;
+            } else if (newPassword.length < 6) {
+                showFieldError('newPassword', 'Password must be at least 6 characters long');
                 isValid = false;
             }
 
-            if (!confirmPassword || newPassword !== confirmPassword) {
-                document.getElementById('confirmPassword').classList.add('is-invalid');
+            if (!confirmPassword) {
+                showFieldError('confirmPassword', 'Please confirm your new password');
+                isValid = false;
+            } else if (newPassword !== confirmPassword) {
+                showFieldError('confirmPassword', 'New password and confirmation password do not match');
                 isValid = false;
             }
 
@@ -555,12 +690,10 @@
                 });
 
                 const result = await response.json();
-                
+
                 if (result.success) {
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('changePasswordModal'));
-                    modal.hide();
+                    closeChangePasswordModal();
                     showAlert(result.message, 'success');
-                    document.getElementById('changePasswordForm').reset();
                 } else {
                     showAlert(result.message, 'danger');
                 }
@@ -570,13 +703,22 @@
             }
         }
 
-        function showAlert(message, type) {
-            // Remove existing alerts in modal
-            const existingAlerts = document.querySelectorAll('.modal-body .alert');
-            existingAlerts.forEach(alert => alert.remove());
+        function showFieldError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            const feedback = field.nextElementSibling;
 
-            // Remove existing alerts in main container
-            document.querySelectorAll('.main-container > .alert').forEach(alert => alert.remove());
+            field.classList.add('is-invalid');
+            if (feedback && feedback.classList.contains('invalid-feedback')) {
+                feedback.textContent = message;
+            }
+        }
+
+        function showAlert(message, type) {
+            // Remove existing alerts
+            document.querySelectorAll('.alert').forEach(alert => {
+                if (!alert.closest('.main-container')) return;
+                alert.remove();
+            });
 
             const alertHtml = `
                 <div class="alert alert-${type}" role="alert">
@@ -588,9 +730,6 @@
             const header = container.querySelector('.profile-header');
             header.insertAdjacentHTML('afterend', alertHtml);
 
-            // Scroll to top to show alert
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-
             // Auto-remove after 5 seconds
             setTimeout(() => {
                 const alert = container.querySelector('.alert');
@@ -598,31 +737,36 @@
             }, 5000);
         }
 
-        // Real-time password confirmation validation
+        // Password confirmation validation
         document.getElementById('confirmPassword').addEventListener('input', function() {
             const newPassword = document.getElementById('newPassword').value;
             const confirmPassword = this.value;
-            
+
             if (confirmPassword && newPassword !== confirmPassword) {
                 this.classList.add('is-invalid');
+                this.nextElementSibling.textContent = 'Passwords do not match';
             } else {
                 this.classList.remove('is-invalid');
+                this.nextElementSibling.textContent = '';
             }
         });
 
-        // Clear modal form when hidden
-        document.getElementById('changePasswordModal').addEventListener('hidden.bs.modal', function() {
-            document.getElementById('changePasswordForm').reset();
-            document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+        // Close modal when clicking outside
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal') && e.target.classList.contains('show')) {
+                closeChangePasswordModal();
+            }
         });
 
-        // Handle Enter key in modal form
+        // Prevent form submission on Enter key, submit via button instead
         document.getElementById('changePasswordForm').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                submitPasswordChange();
+                submitChangePassword();
             }
         });
+
+        console.log(' CSEDS Admin Profile Page Ready!');
     </script>
 </body>
 </html>
