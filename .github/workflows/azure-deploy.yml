@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: Tutorlive  # ?? Updated to your Web App name!
+  AZURE_WEBAPP_NAME: TutorLive  # ?? Updated to match exact Azure Web App name (case-sensitive)!
   DOTNET_VERSION: '8.0.x'
   PROJECT_PATH: 'TutorLiveMentor10.csproj'
 
@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotenv@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -114,7 +114,7 @@ jobs:
           echo "==========================================="
           echo "Performing Health Check..."
           echo "==========================================="
-          HEALTH_URL="https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"
+          HEALTH_URL="https://tutorlive-gpc5eehydeavgbbb.centralindia-01.azurewebsites.net/health"
           
           for i in {1..10}; do
             echo "Attempt $i/10..."
@@ -134,7 +134,7 @@ jobs:
           echo "==========================================="
           echo "Health check incomplete after 10 attempts"
           echo "Please check manually at:"
-          echo "https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          echo "https://tutorlive-gpc5eehydeavgbbb.centralindia-01.azurewebsites.net"
           echo "==========================================="
 
       - name: Deployment Summary
@@ -146,16 +146,16 @@ jobs:
           echo "=========================================="
           echo ""
           echo "Application URL:"
-          echo "   https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          echo "   https://tutorlive-gpc5eehydeavgbbb.centralindia-01.azurewebsites.net"
           echo ""
           echo "Health Check:"
-          echo "   https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"
+          echo "   https://tutorlive-gpc5eehydeavgbbb.centralindia-01.azurewebsites.net/health"
           echo ""
           echo "Home Page:"
-          echo "   https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          echo "   https://tutorlive-gpc5eehydeavgbbb.centralindia-01.azurewebsites.net"
           echo ""
           echo "Admin Login:"
-          echo "   https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/Admin/Login"
+          echo "   https://tutorlive-gpc5eehydeavgbbb.centralindia-01.azurewebsites.net/Admin/Login"
           echo "   Email: cseds@rgmcet.edu.in"
           echo "   Password: 9059530688"
           echo ""
