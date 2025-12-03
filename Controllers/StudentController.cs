@@ -775,7 +775,8 @@ namespace TutorLiveMentor.Controllers
 
             // Separate subjects by type
             var coreSubjects = availableSubjects
-                .Where(s => s.Subject.SubjectType == "Core" && s.SelectedCount < 70)
+                .Where(s => s.Subject.SubjectType == "Core" && 
+                           s.SelectedCount < (s.Subject.MaxEnrollments ?? 70))
                 .ToList();
             
             var professionalElective1 = availableSubjects
