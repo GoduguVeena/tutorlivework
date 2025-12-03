@@ -1,4 +1,4 @@
-@model TutorLiveMentor.Models.FacultyManagementViewModel
+﻿@model TutorLiveMentor.Models.FacultyManagementViewModel
 @{
     ViewData["Title"] = "Manage CSEDS Faculty";
     Layout = null;
@@ -488,6 +488,77 @@
                 justify-content: center;
             }
         }
+    
+        /* App Footer Styling */
+        .app-footer {
+            background: rgba(249,250,242,0.95);
+            backdrop-filter: blur(12px);
+            border-top: 3px solid var(--slate, #CED3DC);
+            box-shadow: 0 -8px 32px rgba(39,64,96,0.13);
+            padding: 30px 20px;
+            margin-top: 50px;
+            text-align: center;
+            font-family: 'Montserrat', Arial, sans-serif;
+            color: #274060;
+            position: relative;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-line {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .footer-line.guidance { font-size: 1em; font-weight: 600; color: #444;
+            margin-bottom: 12px;
+        }
+
+        .footer-line.team {
+            font-size: 0.95em;
+            font-weight: 500;
+            color: #444;
+        }
+
+        .footer-line.copyright {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #274060;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid rgba(39,64,96,0.1);
+        }
+
+        .footer-highlight { color: #274060;
+            font-weight: 700;
+        }
+
+        .footer-name { color: #274060;
+            font-weight: 600;
+        }
+
+        @@media (max-width: 768px) {
+            .app-footer {
+                padding: 20px 15px;
+                margin-top: 30px;
+            }
+
+            .footer-line.guidance {
+                font-size: 0.9em;
+            }
+
+            .footer-line.team {
+                font-size: 0.85em;
+            }
+
+            .footer-line.copyright {
+                font-size: 0.8em;
+            }
+        }
     </style>
 </head>
 <body>
@@ -522,7 +593,7 @@
                     <tbody>
                         @if (Model?.DepartmentFaculty != null && Model.DepartmentFaculty.Any())
                         {
-                            @foreach (var faculty in Model.DepartmentFaculty)
+                            foreach (var faculty in Model.DepartmentFaculty)
                             {
                                 <tr>
                                     <td>
@@ -532,7 +603,7 @@
                                     <td>
                                         @if (faculty.AssignedSubjects != null && faculty.AssignedSubjects.Any())
                                         {
-                                            @foreach (var s in faculty.AssignedSubjects)
+                                            foreach (var s in faculty.AssignedSubjects)
                                             {
                                                 <span class="badge bg-info text-dark">@s.SubjectName</span>
                                             }
@@ -658,7 +729,7 @@
                     <div id="subjectsContainer">
                         @if (Model?.AvailableSubjects != null && Model.AvailableSubjects.Any())
                         {
-                            @foreach (var subject in Model.AvailableSubjects)
+                            foreach (var subject in Model.AvailableSubjects)
                             {
                                 <div class="form-check">
                                     <input class="form-check-input subject-check" type="checkbox" value="@subject.SubjectId" id="subj_@subject.SubjectId">
@@ -689,7 +760,7 @@
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 
     <script>
-        console.log('?? Faculty Management Page Loading...');
+        console.log('Faculty Management Page Loading...');
 
         // Initialize DataTable
         $(document).ready(function() {
@@ -701,7 +772,7 @@
                     zeroRecords: "No matching faculty members found"
                 }
             });
-            console.log('? DataTable Initialized');
+            console.log('DataTable Initialized');
         });
 
         // Utility function to show alerts
@@ -953,7 +1024,21 @@
             }
         });
 
-        console.log('? Faculty Management Page Ready!');
+        console.log('Faculty Management Page Ready!');
     </script>
+
+    <footer class="app-footer">
+        <div class="footer-content">
+            <div class="footer-line guidance">
+                Developed under the guidance of <span class="footer-highlight">Dr. P. Penchala Prasad</span>, Associate Professor, CSE(DS), RGMCET
+            </div>
+            <div class="footer-line team">
+                With team <span class="footer-name">Mr. S. Md. Shahid Afrid</span> (23091A32D4) & <span class="footer-name">Ms. G. Veena</span> (23091A32H9)
+            </div>
+            <div class="footer-line copyright">
+                &copy; All Rights Reserved @@2025
+            </div>
+        </div>
+    </footer>
 </body>
 </html>

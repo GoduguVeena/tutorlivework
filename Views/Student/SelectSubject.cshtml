@@ -1,4 +1,4 @@
-@using TutorLiveMentor.Models
+﻿@using TutorLiveMentor.Models
 @using TutorLiveMentor.Controllers
 @using Microsoft.AspNetCore.Mvc
 @using System.Linq
@@ -173,6 +173,77 @@
         @@keyframes pulse-dot {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        /* Footer Styles */
+        .app-footer {
+            background: rgba(249,250,242,0.95);
+            backdrop-filter: blur(12px);
+            border-top: 3px solid var(--slate, #CED3DC);
+            box-shadow: 0 -8px 32px rgba(39,64,96,0.13);
+            padding: 30px 20px;
+            margin-top: 50px;
+            text-align: center;
+            font-family: 'Montserrat', Arial, sans-serif;
+            color: #274060;
+            position: relative;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-line {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .footer-line.guidance { font-size: 1em; font-weight: 600; color: #444;
+            margin-bottom: 12px;
+        }
+
+        .footer-line.team {
+            font-size: 0.95em;
+            font-weight: 500;
+            color: #444;
+        }
+
+        .footer-line.copyright {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #274060;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid rgba(39,64,96,0.1);
+        }
+
+        .footer-highlight { color: #274060;
+            font-weight: 700;
+        }
+
+        .footer-name { color: #274060;
+            font-weight: 700;
+        }
+
+        @@media (max-width: 768px) {
+            .app-footer {
+                padding: 20px 15px;
+                margin-top: 30px;
+            }
+
+            .footer-line.guidance {
+                font-size: 0.9em;
+            }
+
+            .footer-line.team {
+                font-size: 0.85em;
+            }
+
+            .footer-line.copyright {
+                font-size: 0.8em;
+            }
         }
 
         /* Alerts */
@@ -422,7 +493,7 @@
     </style>
 </head>
 <body>
-    <a href="@Url.Action("MainDashboard", "Student")" class="nav-link"><i class="fas fa-home"></i> Back to Dashboard</a>
+    <a href="@Url.Action("MainDashboard", "Student")" class="nav-link">< Back to Dashboard</a>
     
     <!-- Real-time Connection Status -->
     <div class="connection-status disconnected" id="connectionStatus">
@@ -431,7 +502,7 @@
 
     <div class="main-container">
         <div class="dashboard-header">
-            <h2><i class="fas fa-chalkboard-teacher"></i> Select Faculty</h2>
+            <h2> Choose Faculty</h2>
             <div class="user-info">
                 <strong>@Model.Student.FullName</strong> | 
                 Year: <strong>@Model.Student.Year</strong> | 
@@ -450,6 +521,20 @@
         {
             <div class="alert alert-danger">
                 <i class="fas fa-exclamation-triangle"></i> @TempData["ErrorMessage"]
+            </div>
+        }
+
+        @* SELECTION REQUIREMENT ALERT *@
+        @if (Model.AvailableSubjectsGrouped.Any() || 
+            (Model.ProfessionalElective1Subjects?.Any() ?? false) || 
+            (Model.ProfessionalElective2Subjects?.Any() ?? false) || 
+            (Model.ProfessionalElective3Subjects?.Any() ?? false))
+        {
+            <div class="alert alert-info" style="margin-bottom: 30px; border: 3px solid var(--royal-blue);">
+                <i class="fas fa-info-circle"></i> 
+                <div>
+                    <strong>IMPORTANT:</strong> You must enroll in ALL available subjects before leaving this page.
+                </div>
             </div>
         }
 
@@ -540,7 +625,7 @@
                                                 }
                                                 else
                                                 {
-                                                    <text>SELECT</text>
+                                                    <text>ENROLL</text>
                                                 }
                                             </button>
                                         </form>
@@ -598,7 +683,7 @@
                                                 }
                                                 else
                                                 {
-                                                    <text>SELECT</text>
+                                                    <text>ENROLL</text>
                                                 }
                                             </button>
                                         </form>
@@ -656,7 +741,7 @@
                                                 }
                                                 else
                                                 {
-                                                    <text>SELECT</text>
+                                                    <text>ENROLL</text>
                                                 }
                                             </button>
                                         </form>
@@ -669,14 +754,16 @@
             }
         </div>
 
+        @* NO SUBJECTS AVAILABLE STATE *@
         @if (!Model.AvailableSubjectsGrouped.Any() && 
-             !(Model.ProfessionalElective1Subjects?.Any() ?? false) && 
-             !(Model.ProfessionalElective2Subjects?.Any() ?? false) && 
-             !(Model.ProfessionalElective3Subjects?.Any() ?? false))
+            !(Model.ProfessionalElective1Subjects?.Any() ?? false) && 
+            !(Model.ProfessionalElective2Subjects?.Any() ?? false) && 
+            !(Model.ProfessionalElective3Subjects?.Any() ?? false))
         {
             <div class="no-subjects">
                 <div class="no-subjects-icon"><i class="fas fa-graduation-cap"></i></div>
                 <h3>No Available Subjects</h3>
+                <h3 style="margin-top: 10px;">Thank You!</h3>
                 <p>All subjects for your year are currently full, or you have already enrolled in all available subjects.</p>
                 <p style="margin-top: 10px;">Please check back later or contact administration for assistance.</p>
             </div>
@@ -684,6 +771,53 @@
     </div>
 
     <script>
+        // ENROLLMENT COMPLETION TRACKING
+        let hasUnsavedEnrollments = @((Model.AvailableSubjectsGrouped.Any() || 
+            (Model.ProfessionalElective1Subjects?.Any() ?? false) || 
+            (Model.ProfessionalElective2Subjects?.Any() ?? false) || 
+            (Model.ProfessionalElective3Subjects?.Any() ?? false)) ? "true" : "false");
+
+        // Flag to track if we're submitting an enrollment form
+        let isSubmittingEnrollment = false;
+
+        // Mark enrollment form submissions to bypass beforeunload
+        document.addEventListener('DOMContentLoaded', function() {
+            const enrollmentForms = document.querySelectorAll('form[action*="SelectSubject"]');
+            enrollmentForms.forEach(form => {
+                form.addEventListener('submit', function() {
+                    isSubmittingEnrollment = true;
+                });
+            });
+        });
+
+        // Prevent navigation if enrollments are incomplete (but allow enrollment form submissions)
+        window.addEventListener('beforeunload', function(e) {
+            // Don't show alert if we're submitting an enrollment form
+            if (isSubmittingEnrollment) {
+                return undefined;
+            }
+
+            if (hasUnsavedEnrollments) {
+                const message = 'You have not enrolled in all available subjects. Please enroll in all available subjects before leaving this page.';
+                e.preventDefault();
+                e.returnValue = message;
+                return message;
+            }
+        });
+
+        // Intercept back button click
+        const backButton = document.querySelector('.nav-link');
+        if (backButton) {
+            backButton.addEventListener('click', function(e) {
+                if (hasUnsavedEnrollments) {
+                    e.preventDefault();
+                    alert('You have not enrolled in all available subjects.\n\nYou must complete all enrollments before leaving this page.');
+                    // Stay on the same page - no navigation
+                    return false;
+                }
+            });
+        }
+
         // SIGNALR REAL-TIME CONNECTION
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("/selectionHub")
@@ -694,7 +828,7 @@
         const statusElement = document.getElementById('connectionStatus');
         
         connection.start().then(function () {
-            console.log('? SignalR Connected!');
+            console.log('SignalR Connected!');
             statusElement.innerHTML = '<span class="status-dot connected"></span> Live Updates Active';
             statusElement.className = 'connection-status connected';
             
@@ -705,38 +839,38 @@
             {
                 <text>
                 connection.invoke('JoinSubjectGroup', '@subjectGroup.Key', getYearNumber(studentYear), studentDept)
-                    .then(() => console.log('? Joined subject group: @subjectGroup.Key'))
-                    .catch(err => console.error('? Failed to join subject group @subjectGroup.Key:', err));
+                    .then(() => console.log('Joined subject group: @subjectGroup.Key'))
+                    .catch(err => console.error('Failed to join subject group @subjectGroup.Key:', err));
                 </text>
             }
             
         }).catch(function (err) {
-            console.error('? SignalR Connection Error:', err);
+            console.error('SignalR Connection Error:', err);
             statusElement.innerHTML = '<span class="status-dot disconnected"></span> Offline Mode';
             statusElement.className = 'connection-status disconnected';
         });
 
         connection.onreconnecting(() => {
-            console.warn('?? SignalR reconnecting...');
+            console.warn('SignalR reconnecting...');
             statusElement.innerHTML = '<span class="status-dot connecting"></span> Reconnecting...';
             statusElement.className = 'connection-status disconnected';
         });
 
         connection.onreconnected(() => {
-            console.log('? SignalR reconnected!');
+            console.log('SignalR reconnected!');
             statusElement.innerHTML = '<span class="status-dot connected"></span> Live Updates Active';
             statusElement.className = 'connection-status connected';
         });
 
         connection.onclose((error) => {
-            console.error('? SignalR connection closed:', error);
+            console.error('SignalR connection closed:', error);
             statusElement.innerHTML = '<span class="status-dot disconnected"></span> Connection Lost';
             statusElement.className = 'connection-status disconnected';
         });
 
         // REAL-TIME EVENT HANDLERS
         connection.on("SubjectSelectionUpdated", function (data) {
-            console.log('?? Selection Update Received:', data);
+            console.log('Selection Update Received:', data);
             
             const assignedSubjectId = data.assignedSubjectId || data.AssignedSubjectId;
             const newCount = data.newCount || data.NewCount;
@@ -746,7 +880,7 @@
         });
 
         connection.on("SubjectUnenrollmentUpdated", function (data) {
-            console.log('?? Unenrollment Update Received:', data);
+            console.log('Unenrollment Update Received:', data);
             
             const assignedSubjectId = data.assignedSubjectId || data.AssignedSubjectId;
             const newCount = data.newCount || data.NewCount;
@@ -756,11 +890,11 @@
 
         // UPDATE ITEM
         function updateItem(assignedSubjectId, newCount, isFull) {
-            console.log(`?? Updating item: ID=${assignedSubjectId}, Count=${newCount}, Full=${isFull}`);
+            console.log(`Updating item: ID=${assignedSubjectId}, Count=${newCount}, Full=${isFull}`);
             
             const item = document.querySelector(`[data-assigned-subject-id="${assignedSubjectId}"]`);
             if (!item) {
-                console.warn(`?? Item not found for ID: ${assignedSubjectId}`);
+                console.warn(`Item not found for ID: ${assignedSubjectId}`);
                 return;
             }
 
@@ -801,7 +935,7 @@
                     btn.disabled = false;
                     btn.classList.remove('full');
                     const isElective = btn.closest('.subject-section').querySelector('.section-subtitle');
-                    btn.textContent = isElective ? 'SELECT' : 'ENROLL';
+                    btn.textContent = isElective ? 'ENROLL' : 'ENROLL';
                 }
             }
 
@@ -824,5 +958,19 @@
             }
         });
     </script>
+
+    <footer class="app-footer">
+        <div class="footer-content">
+            <div class="footer-line guidance">
+                Developed under the guidance of <span class="footer-highlight">Dr. P. Penchala Prasad</span>, Associate Professor, CSE(DS), RGMCET
+            </div>
+            <div class="footer-line team">
+                With team <span class="footer-name">Mr. S. Md. Shahid Afrid</span> (23091A32D4) & <span class="footer-name">Ms. G. Veena</span> (23091A32H9)
+            </div>
+            <div class="footer-line copyright">
+                &copy; All Rights Reserved @@2025
+            </div>
+        </div>
+    </footer>
 </body>
 </html>

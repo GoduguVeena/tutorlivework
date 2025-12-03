@@ -1,4 +1,4 @@
-@model TutorLiveMentor.Models.StudentManagementViewModel
+﻿@model TutorLiveMentor.Models.StudentManagementViewModel
 @{
     ViewData["Title"] = "Manage CSEDS Students";
     Layout = null;
@@ -332,6 +332,77 @@
                 gap: 15px;
             }
         }
+    
+        /* App Footer Styling */
+        .app-footer {
+            background: rgba(249,250,242,0.95);
+            backdrop-filter: blur(12px);
+            border-top: 3px solid var(--slate, #CED3DC);
+            box-shadow: 0 -8px 32px rgba(39,64,96,0.13);
+            padding: 30px 20px;
+            margin-top: 50px;
+            text-align: center;
+            font-family: 'Montserrat', Arial, sans-serif;
+            color: #274060;
+            position: relative;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-line {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .footer-line.guidance { font-size: 1em; font-weight: 600; color: #444;
+            margin-bottom: 12px;
+        }
+
+        .footer-line.team {
+            font-size: 0.95em;
+            font-weight: 500;
+            color: #444;
+        }
+
+        .footer-line.copyright {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #274060;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid rgba(39,64,96,0.1);
+        }
+
+        .footer-highlight { color: #274060;
+            font-weight: 700;
+        }
+
+        .footer-name { color: #274060;
+            font-weight: 600;
+        }
+
+        @@media (max-width: 768px) {
+            .app-footer {
+                padding: 20px 15px;
+                margin-top: 30px;
+            }
+
+            .footer-line.guidance {
+                font-size: 0.9em;
+            }
+
+            .footer-line.team {
+                font-size: 0.85em;
+            }
+
+            .footer-line.copyright {
+                font-size: 0.8em;
+            }
+        }
     </style>
 </head>
 <body>
@@ -360,18 +431,7 @@
                         <option value="">All Years</option>
                         @foreach (var year in Model.AvailableYears)
                         {
-                            <option value="@year Year">@year Year</option>
-                        }
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Semester</label>
-                    <select id="filterSemester" class="form-control">
-                        <option value="">All Semesters</option>
-                        @foreach (var semester in Model.AvailableSemesters)
-                        {
-                            <option value="@semester.Value">@semester.NumericValue (@semester.Value)</option>
+                            <option value="@year">@year</option>
                         }
                     </select>
                 </div>
@@ -506,7 +566,6 @@
             const filters = {
                 SearchText: document.getElementById('searchText').value || null,
                 Year: document.getElementById('filterYear').value || null,
-                Semester: document.getElementById('filterSemester').value || null,
                 HasEnrollments: document.getElementById('filterEnrollment').value === '' ? null : 
                                (document.getElementById('filterEnrollment').value === 'true')
             };
@@ -538,7 +597,6 @@
         function clearFilters() {
             document.getElementById('searchText').value = '';
             document.getElementById('filterYear').value = '';
-            document.getElementById('filterSemester').value = '';
             document.getElementById('filterEnrollment').value = '';
             
             // Reset to original data
@@ -751,5 +809,19 @@
             console.log('Total students loaded:', currentStudents.length);
         });
     </script>
+
+    <footer class="app-footer">
+        <div class="footer-content">
+            <div class="footer-line guidance">
+                Developed under the guidance of <span class="footer-highlight">Dr. P. Penchala Prasad</span>, Associate Professor, CSE(DS), RGMCET
+            </div>
+            <div class="footer-line team">
+                With team <span class="footer-name">Mr. S. Md. Shahid Afrid</span> (23091A32D4) & <span class="footer-name">Ms. G. Veena</span> (23091A32H9)
+            </div>
+            <div class="footer-line copyright">
+                &copy; All Rights Reserved @@2025
+            </div>
+        </div>
+    </footer>
 </body>
-</html>
+</html></html></html>

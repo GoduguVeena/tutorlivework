@@ -1,4 +1,4 @@
-@model TutorLiveMentor.Models.CSEDSDashboardViewModel
+﻿@model TutorLiveMentor.Models.CSEDSDashboardViewModel
 @{
     ViewData["Title"] = "CSEDS Department Dashboard";
     Layout = null;
@@ -469,6 +469,91 @@
                 color: var(--royal-blue);
             }
         }
+
+        .stat-updated {
+            animation: pulse 0.5s ease;
+        }
+        
+        @@keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+                color: var(--warm-gold);
+            }
+        }
+    
+        /* App Footer Styling */
+        .app-footer {
+            background: rgba(249,250,242,0.95);
+            backdrop-filter: blur(12px);
+            border-top: 3px solid var(--slate, #CED3DC);
+            box-shadow: 0 -8px 32px rgba(39,64,96,0.13);
+            padding: 30px 20px;
+            margin-top: 50px;
+            text-align: center;
+            font-family: 'Montserrat', Arial, sans-serif;
+            color: #274060;
+            position: relative;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-line {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .footer-line.guidance { font-size: 1em; font-weight: 600; color: #444;
+            margin-bottom: 12px;
+        }
+
+        .footer-line.team {
+            font-size: 0.95em;
+            font-weight: 500;
+            color: #444;
+        }
+
+        .footer-line.copyright {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #274060;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid rgba(39,64,96,0.1);
+        }
+
+        .footer-highlight { color: #274060;
+            font-weight: 700;
+        }
+
+        .footer-name { color: #274060;
+            font-weight: 600;
+        }
+
+        @@media (max-width: 768px) {
+            .app-footer {
+                padding: 20px 15px;
+                margin-top: 30px;
+            }
+
+            .footer-line.guidance {
+                font-size: 0.9em;
+            }
+
+            .footer-line.team {
+                font-size: 0.85em;
+            }
+
+            .footer-line.copyright {
+                font-size: 0.8em;
+            }
+        }
     </style>
 </head>
 <body>
@@ -711,30 +796,151 @@
             });
         });
 
-        // Initialize page
+        // Initialize page and setup real-time updates
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Enhanced CSEDS Dashboard loaded successfully');
             
-            // You could add auto-refresh functionality here
-            // setInterval(updateDashboardStats, 30000); // Refresh every 30 seconds
+            // Enable auto-refresh every 30 seconds
+            setInterval(updateDashboardStats, 30000); // Refresh every 30 seconds
+            
+            // Setup SignalR for real-time updates
+            setupSignalRConnection();
         });
 
-        // Function to update dashboard statistics (optional)
+        // Function to update dashboard statistics
         async function updateDashboardStats() {
             try {
-                const response = await fetch('@Url.Action("CSEDSSystemInfo", "Admin")');
+                const response = await fetch('@Url.Action("GetDashboardStats", "Admin")');
                 const data = await response.json();
                 
-                if (data.DatabaseStats) {
-                    document.getElementById('csedsStudentsCount').textContent = data.DatabaseStats.StudentsCount;
-                    document.getElementById('csedsFacultyCount').textContent = data.DatabaseStats.FacultiesCount;
-                    document.getElementById('csedsSubjectsCount').textContent = data.DatabaseStats.SubjectsCount;
-                    document.getElementById('csedsEnrollmentsCount').textContent = data.DatabaseStats.EnrollmentsCount;
+                if (data.success) {
+                    // Update counts with smooth animation
+                    animateValue('csedsStudentsCount', data.studentsCount);
+                    animateValue('csedsFacultyCount', data.facultyCount);
+                    animateValue('csedsSubjectsCount', data.subjectsCount);
+                    animateValue('csedsEnrollmentsCount', data.enrollmentsCount);
+                    
+                    console.log('Dashboard stats updated:', data);
                 }
             } catch (error) {
                 console.error('Error updating dashboard stats:', error);
             }
         }
+
+        // Animate number changes
+        function animateValue(id, newValue) {
+            const element = document.getElementById(id);
+            if (!element) return;
+            
+            const currentValue = parseInt(element.textContent) || 0;
+            if (currentValue === newValue) return;
+            
+            const duration = 500; // Animation duration in ms
+            const steps = 20;
+            const increment = (newValue - currentValue) / steps;
+            let current = currentValue;
+            let step = 0;
+            
+            const timer = setInterval(() => {
+                step++;
+                current += increment;
+                element.textContent = Math.round(current);
+                
+                if (step >= steps) {
+                    element.textContent = newValue;
+                    clearInterval(timer);
+                    
+                    // Add pulse effect
+                    element.classList.add('stat-updated');
+                    setTimeout(() => element.classList.remove('stat-updated'), 1000);
+                }
+            }, duration / steps);
+        }
+
+        // Setup SignalR for real-time updates
+        function setupSignalRConnection() {
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/selectionHub")
+                .withAutomaticReconnect()
+                .build();
+
+            connection.start()
+                .then(() => {
+                    console.log('SignalR connected for dashboard updates');
+                    
+                    // Join admin group for dashboard updates
+                    connection.invoke("JoinAdminGroup")
+                        .catch(err => console.error('Error joining admin group:', err));
+                })
+                .catch(err => {
+                    console.error('SignalR connection failed:', err);
+                });
+
+            // Listen for dashboard update events
+            connection.on("DashboardStatsUpdated", function(data) {
+                console.log('Real-time dashboard update received:', data);
+                
+                animateValue('csedsStudentsCount', data.studentsCount);
+                animateValue('csedsFacultyCount', data.facultyCount);
+                animateValue('csedsSubjectsCount', data.subjectsCount);
+                animateValue('csedsEnrollmentsCount', data.enrollmentsCount);
+                
+                // Show notification toast
+                showUpdateNotification(data.message || 'Dashboard updated');
+            });
+
+            // Handle reconnection
+            connection.onreconnected(() => {
+                console.log('SignalR reconnected');
+                updateDashboardStats(); // Refresh data after reconnect
+            });
+        }
+
+        // Show notification toast
+        function showUpdateNotification(message) {
+            // Create toast element if it doesn't exist
+            let toast = document.getElementById('dashboard-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'dashboard-toast';
+                toast.style.cssText = `
+                    position: fixed;
+                    top: 80px;
+                    right: 20px;
+                    background: rgba(111, 66, 193, 0.95);
+                    color: white;
+                    padding: 15px 25px;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                    z-index: 9999;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                    font-weight: 600;
+                `;
+                document.body.appendChild(toast);
+            }
+            
+            toast.textContent = message;
+            toast.style.opacity = '1';
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 3000);
+        }
     </script>
+
+    <footer class="app-footer">
+        <div class="footer-content">
+            <div class="footer-line guidance">
+                Developed under the guidance of <span class="footer-highlight">Dr. P. Penchala Prasad</span>, Associate Professor, CSE(DS), RGMCET
+            </div>
+            <div class="footer-line team">
+                With team <span class="footer-name">Mr. S. Md. Shahid Afrid</span> (23091A32D4) & <span class="footer-name">Ms. G. Veena</span> (23091A32H9)
+            </div>
+            <div class="footer-line copyright">
+                &copy; All Rights Reserved @@2025
+            </div>
+        </div>
+    </footer>
 </body>
 </html>

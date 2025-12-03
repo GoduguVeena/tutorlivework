@@ -177,5 +177,32 @@ namespace TutorLiveMentor.Services
                 _logger.LogError(ex, "? Error sending SignalR availability notification");
             }
         }
+
+        /// <summary>
+        /// Notify all admins that dashboard statistics have changed
+        /// </summary>
+        public async Task NotifyDashboardStatsUpdated(int studentsCount, int facultyCount, int subjectsCount, int enrollmentsCount, string message)
+        {
+            try
+            {
+                _logger.LogInformation($"?? Broadcasting dashboard stats update to all admins");
+                
+                await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated", new
+                {
+                    StudentsCount = studentsCount,
+                    FacultyCount = facultyCount,
+                    SubjectsCount = subjectsCount,
+                    EnrollmentsCount = enrollmentsCount,
+                    Message = message,
+                    Timestamp = DateTime.Now
+                });
+
+                _logger.LogInformation($"? Dashboard stats notification sent successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "? Error sending SignalR dashboard stats notification");
+            }
+        }
     }
 }

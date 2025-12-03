@@ -1,4 +1,6 @@
-﻿@model TutorLiveMentor.Models.Student
+﻿@using TutorLiveMentor.Helpers
+
+@model TutorLiveMentor.Models.Student
 
 @{
     ViewData["Title"] = "Student Profile";
@@ -98,23 +100,65 @@
         }
 
         .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border: 1px solid transparent;
-            border-radius: 10px;
+            padding: 18px 24px;
+            margin-bottom: 30px;
+            border: 3px solid transparent;
+            border-radius: 15px;
             font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.1em;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(10px);
+            animation: slideDown 0.5s ease;
         }
 
         .alert-success {
-            color: var(--success-green);
-            background-color: rgba(40, 167, 69, 0.1);
+            color: #155724;
+            background: linear-gradient(135deg, rgba(212, 237, 218, 0.98), rgba(195, 230, 203, 0.98));
             border-color: var(--success-green);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+        }
+
+        .alert-success::before {
+            content: "\2713";
+            font-size: 1.8em;
+            font-weight: 900;
+            color: var(--success-green);
+            background: rgba(40, 167, 69, 0.15);
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .alert-danger {
-            color: var(--error-red);
-            background-color: rgba(220, 53, 69, 0.1);
+            color: #721c24;
+            background: linear-gradient(135deg, rgba(248, 215, 218, 0.98), rgba(242, 200, 203, 0.98));
             border-color: var(--error-red);
+            box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
+        }
+
+        .alert-danger::before {
+            content: "\26A0";
+            font-size: 1.8em;
+            font-weight: 900;
+            color: var(--error-red);
+            background: rgba(220, 53, 69, 0.15);
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @@keyframes slideDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .profile-card {
@@ -297,10 +341,81 @@
                 margin-bottom: 20px;
             }
         }
+    
+        /* App Footer Styling */
+        .app-footer {
+            background: rgba(249,250,242,0.95);
+            backdrop-filter: blur(12px);
+            border-top: 3px solid var(--slate, #CED3DC);
+            box-shadow: 0 -8px 32px rgba(39,64,96,0.13);
+            padding: 30px 20px;
+            margin-top: 50px;
+            text-align: center;
+            font-family: 'Montserrat', Arial, sans-serif;
+            color: #274060;
+            position: relative;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-line {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .footer-line.guidance { font-size: 1em; font-weight: 600; color: #444;
+            margin-bottom: 12px;
+        }
+
+        .footer-line.team {
+            font-size: 0.95em;
+            font-weight: 500;
+            color: #444;
+        }
+
+        .footer-line.copyright {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #274060;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid rgba(39,64,96,0.1);
+        }
+
+        .footer-highlight { color: #274060;
+            font-weight: 700;
+        }
+
+        .footer-name { color: #274060;
+            font-weight: 600;
+        }
+
+        @@media (max-width: 768px) {
+            .app-footer {
+                padding: 20px 15px;
+                margin-top: 30px;
+            }
+
+            .footer-line.guidance {
+                font-size: 0.9em;
+            }
+
+            .footer-line.team {
+                font-size: 0.85em;
+            }
+
+            .footer-line.copyright {
+                font-size: 0.8em;
+            }
+        }
     </style>
 </head>
 <body>
-    <a href="@Url.Action("MainDashboard", "Student")" class="nav-link">🏠 Back to Dashboard</a>
+    <a href="@Url.Action("MainDashboard", "Student")" class="nav-link"> Back to Dashboard</a>
     
     <div class="main-container">
         <div class="dashboard-header">
@@ -324,7 +439,7 @@
         <div class="profile-card">
             <div class="profile-header">
                 <div class="profile-avatar">
-                    👤
+                    <i class="fas fa-user-graduate"></i>
                 </div>
                 <div class="profile-info">
                     <h3>@Model.FullName</h3>
@@ -334,7 +449,7 @@
 
             <div class="profile-details">
                 <div class="detail-row">
-                    <div class="detail-icon">🎓</div>
+                    
                     <div class="detail-content">
                         <div class="detail-label">Academic Year</div>
                         <div class="detail-value">@Model.Year</div>
@@ -342,15 +457,15 @@
                 </div>
 
                 <div class="detail-row">
-                    <div class="detail-icon">🏢</div>
+                    
                     <div class="detail-content">
                         <div class="detail-label">Department</div>
-                        <div class="detail-value">@Model.Department</div>
+                        <div class="detail-value">@DepartmentNormalizer.Normalize(Model.Department)</div>
                     </div>
                 </div>
 
                 <div class="detail-row">
-                    <div class="detail-icon">📧</div>
+                    
                     <div class="detail-content">
                         <div class="detail-label">Email Address</div>
                         <div class="detail-value">@Model.Email</div>
@@ -358,7 +473,7 @@
                 </div>
 
                 <div class="detail-row">
-                    <div class="detail-icon">📚</div>
+
                     <div class="detail-content">
                         <div class="detail-label">Enrolled Subjects</div>
                         <div class="detail-value">@Model.Enrollments.Count() Subject(s)</div>
@@ -368,16 +483,30 @@
 
             <div class="action-buttons">
                 <a href="@Url.Action("ChangePassword", "Student")" class="glass-btn">
-                    🔑 Change Password
+                     Change Password
                 </a>
                 <a href="@Url.Action("MainDashboard", "Student")" class="glass-btn secondary">
-                    🏠 Main Dashboard
+                     Main Dashboard
                 </a>
                 <a href="@Url.Action("Logout", "Student")" class="glass-btn secondary">
-                    🚪 Logout
+                    Logout
                 </a>
             </div>
         </div>
     </div>
+
+    <footer class="app-footer">
+        <div class="footer-content">
+            <div class="footer-line guidance">
+                Developed under the guidance of <span class="footer-highlight">Dr. P. Penchala Prasad</span>, Associate Professor, CSE(DS), RGMCET
+            </div>
+            <div class="footer-line team">
+                With team <span class="footer-name">Mr. S. Md. Shahid Afrid</span> (23091A32D4) & <span class="footer-name">Ms. G. Veena</span> (23091A32H9)
+            </div>
+            <div class="footer-line copyright">
+                &copy; All Rights Reserved @@2025
+            </div>
+        </div>
+    </footer>
 </body>
 </html>

@@ -30,9 +30,9 @@ namespace TutorLiveMentor.Middleware
             // Content-Security-Policy: Prevents XSS and data injection attacks
             context.Response.Headers.Append("Content-Security-Policy",
                 "default-src 'self'; " +
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; " +
-                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-                "font-src 'self' https://fonts.gstatic.com; " +
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; " +
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; " +
+                "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; " +
                 "img-src 'self' data: https:; " +
                 "connect-src 'self' ws: wss:;"); // Allow WebSocket for SignalR
 

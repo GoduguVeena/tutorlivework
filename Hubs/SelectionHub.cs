@@ -181,5 +181,12 @@ namespace TutorLiveMentor.Hubs
                 Timestamp = DateTime.Now
             });
         }
+
+        public async Task JoinAdminGroup()
+        {
+            _logger.LogInformation($"?? Admin connection {Context.ConnectionId} joining 'Admins' group");
+            await Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
+            _logger.LogInformation($"   ? Successfully joined 'Admins' group");
+        }
     }
 }

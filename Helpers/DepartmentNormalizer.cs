@@ -9,10 +9,13 @@ namespace TutorLiveMentor.Helpers
     {
         /// <summary>
         /// Normalizes department names to standard format
-        /// CSEDS, CSDS, CSE-DS, CSE (DS), CSE_DS, CSE DATA SCIENCE -> CSE(DS)
+        /// CSEDS, CSDS, CSE-DS, CSE (DS), CSE_DS, CSE DATA SCIENCE -> CSEDS (database format)
         /// CSE(AIML), CSEAIML, CSE-AIML -> CSE(AIML)
         /// CSE(CS), CSECS, CSE-CS -> CSE(CS)
         /// CSE(BS), CSEBS, CSE-BS -> CSE(BS)
+        /// 
+        /// NOTE: We normalize to "CSEDS" (no parentheses) for consistent database storage.
+        /// The display name "CSE (Data Science)" is used in UI.
         /// </summary>
         /// <param name="department">Raw department name from user input</param>
         /// <returns>Normalized department name</returns>
@@ -26,12 +29,13 @@ namespace TutorLiveMentor.Helpers
             var upper = normalized.ToUpper();
 
             // ===== CSE DATA SCIENCE VARIANTS =====
-            // These should all map to "CSE(DS)" - the user-facing format
+            // These should all map to "CSEDS" - the database storage format
+            // Handles: CSE(DS), CSEDS, CSE-DS, CSE (DS), CSE_DS, CSE DATA SCIENCE
             if (upper == "CSEDS" || upper == "CSDS" || upper == "CSE-DS" || 
                 upper == "CSE (DS)" || upper == "CSEDATASCIENCE" ||
                 upper == "CSE DATA SCIENCE" || upper == "CSE_DS" || upper == "CSE(DS)")
             {
-                return "CSE(DS)";  // Changed from "CSEDS" to "CSE(DS)"
+                return "CSEDS";  // Use CSEDS as the standard normalized format
             }
 
             // ===== CSE AI/ML VARIANTS =====
@@ -85,8 +89,8 @@ namespace TutorLiveMentor.Helpers
 
             return department.ToUpper() switch
             {
-                "CSE(DS)" => "CSE (Data Science)",  // Changed from "CSEDS"
-                "CSEDS" => "CSE (Data Science)",    // Support legacy format
+                "CSEDS" => "CSE (Data Science)",
+                "CSE(DS)" => "CSE (Data Science)",    // Support legacy format
                 "CSE(AIML)" => "CSE (Artificial Intelligence and Machine Learning)",
                 "CSE(CS)" => "CSE (Cyber Security)",
                 "CSE(BS)" => "CSE (Business Systems)",

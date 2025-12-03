@@ -1,4 +1,4 @@
-@model TutorLiveMentor.Models.Student
+﻿@model TutorLiveMentor.Models.Student
 
 @{
     ViewData["Title"] = "Assigned Faculty";
@@ -236,10 +236,81 @@
                 gap: 15px;
             }
         }
+    
+        /* App Footer Styling */
+        .app-footer {
+            background: rgba(249,250,242,0.95);
+            backdrop-filter: blur(12px);
+            border-top: 3px solid var(--slate, #CED3DC);
+            box-shadow: 0 -8px 32px rgba(39,64,96,0.13);
+            padding: 30px 20px;
+            margin-top: 50px;
+            text-align: center;
+            font-family: 'Montserrat', Arial, sans-serif;
+            color: #274060;
+            position: relative;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-line {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .footer-line.guidance { font-size: 1em; font-weight: 600; color: #444;
+            margin-bottom: 12px;
+        }
+
+        .footer-line.team {
+            font-size: 0.95em;
+            font-weight: 500;
+            color: #444;
+        }
+
+        .footer-line.copyright {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #274060;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid rgba(39,64,96,0.1);
+        }
+
+        .footer-highlight { color: #274060;
+            font-weight: 700;
+        }
+
+        .footer-name { color: #274060;
+            font-weight: 600;
+        }
+
+        @@media (max-width: 768px) {
+            .app-footer {
+                padding: 20px 15px;
+                margin-top: 30px;
+            }
+
+            .footer-line.guidance {
+                font-size: 0.9em;
+            }
+
+            .footer-line.team {
+                font-size: 0.85em;
+            }
+
+            .footer-line.copyright {
+                font-size: 0.8em;
+            }
+        }
     </style>
 </head>
 <body>
-    <a href="@Url.Action("MainDashboard", "Student")" class="nav-link"><i class="fas fa-home"></i> Back to Dashboard</a>
+    <a href="@Url.Action("MainDashboard", "Student")" class="nav-link"> Back to Dashboard</a>
 
     <div class="main-container">
         <div class="dashboard-header">
@@ -270,13 +341,13 @@
                                 <i class="fas fa-book-open"></i> @enrollment.AssignedSubject.Subject.Name
                             </div>
                             <div class="faculty-name">
-                                <i class="fas fa-chalkboard-teacher"></i> Faculty: @enrollment.AssignedSubject.Faculty.Name
+                                 Faculty: @enrollment.AssignedSubject.Faculty.Name
                             </div>
                             <div class="enrollment-stats">
-                                <i class="fas fa-user-graduate"></i> Students enrolled: @enrollment.AssignedSubject.SelectedCount / 70
+                                 Students enrolled: @enrollment.AssignedSubject.SelectedCount / 70
                             </div>
                             <div class="enrollment-date" style="color: #888; margin-top: 8px;">
-                                <i class="fas fa-calendar-check"></i> Enrolled: @enrollment.EnrolledAt.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")
+                                 Enrolled: @enrollment.EnrolledAt.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")
                             </div>
                         </div>
                     </div>
@@ -286,7 +357,7 @@
         else
         {
             <div class="no-enrollments">
-                <div class="no-enrollments-icon"><i class="fas fa-target"></i></div>
+               
                 <h3>No Faculty Assigned Yet</h3>
                 <p>You haven't enrolled in any subjects yet. Visit the "Select Subject" section to choose your subjects and faculty members.</p>
                 <a href="@Url.Action("SelectSubject", "Student")" class="select-btn">
@@ -295,5 +366,19 @@
             </div>
         }
     </div>
+
+    <footer class="app-footer">
+        <div class="footer-content">
+            <div class="footer-line guidance">
+                Developed under the guidance of <span class="footer-highlight">Dr. P. Penchala Prasad</span>, Associate Professor, CSE(DS), RGMCET
+            </div>
+            <div class="footer-line team">
+                With team <span class="footer-name">Mr. S. Md. Shahid Afrid</span> (23091A32D4) & <span class="footer-name">Ms. G. Veena</span> (23091A32H9)
+            </div>
+            <div class="footer-line copyright">
+                &copy; All Rights Reserved @@2025
+            </div>
+        </div>
+    </footer>
 </body>
 </html>

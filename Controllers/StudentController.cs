@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using TutorLiveMentor.Models;
 using TutorLiveMentor.Services;
+using TutorLiveMentor.Attributes;
 
 namespace TutorLiveMentor.Controllers
 {
@@ -14,26 +15,31 @@ namespace TutorLiveMentor.Controllers
     {
         private readonly AppDbContext _context;
         private readonly SignalRService _signalRService;
+        private readonly SubjectSelectionValidator _selectionValidator;
 
         public StudentController(AppDbContext context, SignalRService signalRService)
         {
             _context = context;
             _signalRService = signalRService;
+            _selectionValidator = new SubjectSelectionValidator(context);
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public IActionResult Index()
         {
             return View();
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public IActionResult Register()
         {
             return View();
         }
 
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> Register(StudentRegistrationModel model)
         {
             if (ModelState.IsValid)
@@ -82,12 +88,14 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public IActionResult Login()
         {
             return View();
         }
 
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> Login(LoginViewModel model)
         {
             // Simple, reliable login without complex debugging
@@ -98,7 +106,7 @@ namespace TutorLiveMentor.Controllers
 
             try
             {
-                // Find student with matching credentials
+                // Finds student with matching credentials
                 var student = await _context.Students
                     .FirstOrDefaultAsync(s => s.Email == model.Email && s.Password == model.Password);
 
@@ -114,6 +122,7 @@ namespace TutorLiveMentor.Controllers
                 // Set session values - now using string Id
                 HttpContext.Session.SetString("StudentId", student.Id);
                 HttpContext.Session.SetString("StudentName", student.FullName);
+                HttpContext.Session.SetString("LastActivity", DateTime.Now.ToString("o"));
 
                 // Force session to be saved immediately
                 await HttpContext.Session.CommitAsync();
@@ -129,6 +138,7 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpGet]
+        [StudentAuthorize]
         public async Task<IActionResult> MainDashboard()
         {
             // Simple session check
@@ -139,6 +149,28 @@ namespace TutorLiveMentor.Controllers
                 Console.WriteLine("MainDashboard - Student not logged in");
                 TempData["ErrorMessage"] = "Please login to access the dashboard.";
                 return RedirectToAction("Login");
+            }
+
+            // Check if student is in selection process and hasn't completed it
+            var isInSelectionProcess = HttpContext.Session.GetString("IsInSelectionProcess");
+            var selectionCompleted = HttpContext.Session.GetString("SelectionCompleted");
+
+            if (isInSelectionProcess == "true" && selectionCompleted != "true")
+            {
+                // Check if student has actually completed all selections
+                var hasCompleted = await _selectionValidator.HasCompletedAllSelections(studentId);
+                
+                if (!hasCompleted)
+                {
+                    TempData["ErrorMessage"] = "Please complete all subject selections before accessing other pages. Select all available core subjects and professional electives.";
+                    return RedirectToAction("SelectSubject");
+                }
+                else
+                {
+                    // Mark selection as completed
+                    HttpContext.Session.SetString("SelectionCompleted", "true");
+                    HttpContext.Session.Remove("IsInSelectionProcess");
+                }
             }
             
             // Get student details
@@ -152,9 +184,14 @@ namespace TutorLiveMentor.Controllers
 
             Console.WriteLine($"MainDashboard - Student: {student.FullName}, Department: {student.Department}");
 
-            // Check faculty selection schedule - support both CSEDS and CSE(DS) formats
+            // ?? ENHANCED: Use OR condition for consistent schedule checking instead of DepartmentNormalizer in query
+            Console.WriteLine($"MainDashboard - Student Department: {student.Department}");
+
+            // Check faculty selection schedule - now using standardized CSE(DS) only
+            // Get schedule by normalized department (FIXED)
+            var normalizedDept = DepartmentNormalizer.Normalize(student.Department);
             var schedule = await _context.FacultySelectionSchedules
-                .FirstOrDefaultAsync(s => s.Department == "CSEDS" || s.Department == "CSE(DS)" || s.Department == student.Department);
+                .FirstOrDefaultAsync(s => s.Department == normalizedDept);
 
             Console.WriteLine($"MainDashboard - Schedule found: {schedule != null}");
             if (schedule != null)
@@ -174,15 +211,27 @@ namespace TutorLiveMentor.Controllers
                 Console.WriteLine($"MainDashboard - No schedule found for department: {student.Department}");
             }
 
+            // Check if student's department matches schedule department using normalizer
             var isAvailable = schedule == null || schedule.IsCurrentlyAvailable;
+            if (schedule != null)
+            {
+                var normalizedStudentDept = DepartmentNormalizer.Normalize(student.Department);
+                var normalizedScheduleDept = DepartmentNormalizer.Normalize(schedule.Department);
+                if (normalizedStudentDept != normalizedScheduleDept)
+                {
+                    // Student is not in CSEDS department, so schedule doesn't apply
+                    isAvailable = true;
+                }
+            }
+            
             Console.WriteLine($"MainDashboard - Final IsSelectionAvailable: {isAvailable}");
 
-            // ? Set ALL ViewBag properties with student info
+            // Set ALL ViewBag properties with student info
             ViewBag.StudentId = studentId;
             ViewBag.StudentName = student.FullName;
-            ViewBag.StudentRegdNumber = student.RegdNumber;  // ? Added
-            ViewBag.StudentYear = student.Year;              // ? Added
-            ViewBag.StudentDepartment = student.Department;  // ? Added
+            ViewBag.StudentRegdNumber = student.RegdNumber;
+            ViewBag.StudentYear = student.Year;
+            ViewBag.StudentDepartment = DepartmentNormalizer.Normalize(student.Department); // Apply normalizer for display
             ViewBag.IsSelectionAvailable = isAvailable;
             ViewBag.ScheduleMessage = schedule?.DisabledMessage ?? "";
             ViewBag.ScheduleStatus = schedule?.StatusDescription ?? "Always Available";
@@ -191,12 +240,35 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpGet]
+        [StudentAuthorize]
         public async Task<IActionResult> MySelectedSubjects()
         {
             var studentId = HttpContext.Session.GetString("StudentId");
             if (string.IsNullOrEmpty(studentId))
             {
                 return RedirectToAction("Login");
+            }
+
+            // Check if student is in selection process and hasn't completed it
+            var isInSelectionProcess = HttpContext.Session.GetString("IsInSelectionProcess");
+            var selectionCompleted = HttpContext.Session.GetString("SelectionCompleted");
+
+            if (isInSelectionProcess == "true" && selectionCompleted != "true")
+            {
+                // Check if student has actually completed all selections
+                var hasCompleted = await _selectionValidator.HasCompletedAllSelections(studentId);
+                
+                if (!hasCompleted)
+                {
+                    TempData["ErrorMessage"] = "Please complete all subject selections before accessing other pages. Select all available core subjects and professional electives.";
+                    return RedirectToAction("SelectSubject");
+                }
+                else
+                {
+                    // Mark selection as completed
+                    HttpContext.Session.SetString("SelectionCompleted", "true");
+                    HttpContext.Session.Remove("IsInSelectionProcess");
+                }
             }
 
             var student = await _context.Students
@@ -217,12 +289,35 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpGet]
+        [StudentAuthorize]
         public async Task<IActionResult> Dashboard()
         {
             var studentId = HttpContext.Session.GetString("StudentId");
             if (string.IsNullOrEmpty(studentId))
             {
                 return RedirectToAction("Login");
+            }
+
+            // Check if student is in selection process and hasn't completed it
+            var isInSelectionProcess = HttpContext.Session.GetString("IsInSelectionProcess");
+            var selectionCompleted = HttpContext.Session.GetString("SelectionCompleted");
+
+            if (isInSelectionProcess == "true" && selectionCompleted != "true")
+            {
+                // Check if student has actually completed all selections
+                var hasCompleted = await _selectionValidator.HasCompletedAllSelections(studentId);
+                
+                if (!hasCompleted)
+                {
+                    TempData["ErrorMessage"] = "Please complete all subject selections before accessing other pages. Select all available core subjects and professional electives.";
+                    return RedirectToAction("SelectSubject");
+                }
+                else
+                {
+                    // Mark selection as completed
+                    HttpContext.Session.SetString("SelectionCompleted", "true");
+                    HttpContext.Session.Remove("IsInSelectionProcess");
+                }
             }
 
             var student = await _context.Students
@@ -244,6 +339,7 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpPost]
+        [StudentAuthorize]
         public async Task<IActionResult> SelectSubject(int assignedSubjectId)
         {
             var studentId = HttpContext.Session.GetString("StudentId");
@@ -275,10 +371,16 @@ namespace TutorLiveMentor.Controllers
 
                     Console.WriteLine($"SelectSubject POST - Student: {student.FullName}, Department: {student.Department}");
 
-                    // ? CRITICAL: CHECK FACULTY SELECTION SCHEDULE FIRST
-                    // Support both CSEDS and CSE(DS) formats
+                    // ?? ENHANCED: CRITICAL FACULTY SELECTION SCHEDULE CHECK WITH OR CONDITION
+                    Console.WriteLine($"SelectSubject POST - Student Department: {student.Department}");
+                    
+                    // Get schedule by normalized department (FIXED)
+                    
+                    var normalizedDept = DepartmentNormalizer.Normalize(student.Department);
+                    
                     var schedule = await _context.FacultySelectionSchedules
-                        .FirstOrDefaultAsync(s => s.Department == "CSEDS" || s.Department == "CSE(DS)" || s.Department == student.Department);
+                    
+                        .FirstOrDefaultAsync(s => s.Department == normalizedDept);
 
                     Console.WriteLine($"SelectSubject POST - Schedule found: {schedule != null}");
                     if (schedule != null)
@@ -288,13 +390,19 @@ namespace TutorLiveMentor.Controllers
                         Console.WriteLine($"SelectSubject POST - Schedule IsCurrentlyAvailable: {schedule.IsCurrentlyAvailable}");
                     }
 
-                    // If schedule exists and faculty selection is NOT available, reject enrollment
-                    if (schedule != null && !schedule.IsCurrentlyAvailable)
+                    // ?? Check if schedule applies to this student and if selection is blocked
+                    if (schedule != null)
                     {
-                        Console.WriteLine($"SelectSubject POST - ENROLLMENT BLOCKED! Reason: {schedule.DisabledMessage}");
-                        await transaction.RollbackAsync();
-                        TempData["ErrorMessage"] = schedule.DisabledMessage ?? "Faculty selection is currently disabled. You cannot enroll in subjects at this time.";
-                        return RedirectToAction("MainDashboard");
+                        var studentNormalizedDept = DepartmentNormalizer.Normalize(student.Department);
+                        var scheduleNormalizedDept = DepartmentNormalizer.Normalize(schedule.Department);
+                        
+                        if (studentNormalizedDept == scheduleNormalizedDept && !schedule.IsCurrentlyAvailable)
+                        {
+                            Console.WriteLine($"SelectSubject POST - ENROLLMENT BLOCKED! Reason: {schedule.DisabledMessage}");
+                            await transaction.RollbackAsync();
+                            TempData["ErrorMessage"] = schedule.DisabledMessage ?? "Faculty selection is currently disabled. You cannot enroll in subjects at this time.";
+                            return RedirectToAction("MainDashboard");
+                        }
                     }
 
                     Console.WriteLine("SelectSubject POST - Schedule check passed, proceeding with enrollment");
@@ -313,7 +421,18 @@ namespace TutorLiveMentor.Controllers
                         return NotFound();
                     }
 
-                    // ? NEW: Check if this is a Professional Elective subject
+                    // ?? ENHANCED: Verify the assigned subject belongs to the student's department
+                    var subjectNormalizedDept = DepartmentNormalizer.Normalize(assignedSubject.Subject.Department);
+                    var studentDeptNormalized = DepartmentNormalizer.Normalize(student.Department);
+                    if (subjectNormalizedDept != studentDeptNormalized)
+                    {
+                        Console.WriteLine($"SelectSubject POST - DEPARTMENT MISMATCH! Student: {studentDeptNormalized}, Subject: {subjectNormalizedDept}");
+                        await transaction.RollbackAsync();
+                        TempData["ErrorMessage"] = "You can only enroll in subjects from your own department.";
+                        return RedirectToAction("SelectSubject");
+                    }
+
+                    // NEW: Check if this is a Professional Elective subject
                     if (assignedSubject.Subject.SubjectType.StartsWith("ProfessionalElective"))
                     {
                         Console.WriteLine($"SelectSubject POST - Professional Elective detected: {assignedSubject.Subject.SubjectType}");
@@ -330,7 +449,7 @@ namespace TutorLiveMentor.Controllers
                             return RedirectToAction("SelectSubject");
                         }
                         
-                        // ? NEW: Check MaxEnrollments for Professional Electives
+                        // NEW: Check MaxEnrollments for Professional Electives
                         if (assignedSubject.Subject.MaxEnrollments.HasValue)
                         {
                             var currentEnrollments = await _context.StudentEnrollments
@@ -367,19 +486,21 @@ namespace TutorLiveMentor.Controllers
                         return RedirectToAction("SelectSubject");
                     }
 
-                    // ? CRITICAL CHECK: Re-verify count within transaction to prevent race conditions
+                    // ?? CRITICAL CHECK: Re-verify count within transaction to prevent race conditions
                     // Get the ACTUAL current count from database, not cached value
                     var currentCount = await _context.StudentEnrollments
                         .CountAsync(e => e.AssignedSubjectId == assignedSubjectId);
 
                     Console.WriteLine($"SelectSubject POST - Current enrollment count: {currentCount}");
 
-                    // For core subjects, check 70 limit
-                    if (assignedSubject.Subject.SubjectType == "Core" && currentCount >= 70)
+                    // Check enrollment limit based on Subject's MaxEnrollments (handles Year 2=60, Year 3/4=70)
+                    var maxLimit = assignedSubject.Subject.MaxEnrollments ?? 70; // Default to 70 if not set
+                    
+                    if (assignedSubject.Subject.SubjectType == "Core" && currentCount >= maxLimit)
                     {
-                        Console.WriteLine("SelectSubject POST - Subject is full (70 students)");
+                        Console.WriteLine($"SelectSubject POST - Subject is full ({maxLimit} students)");
                         await transaction.RollbackAsync();
-                        TempData["ErrorMessage"] = "This subject is already full (maximum 70 students). Someone enrolled just before you.";
+                        TempData["ErrorMessage"] = $"This subject is already full (maximum {maxLimit} students). Someone enrolled just before you.";
                         return RedirectToAction("SelectSubject");
                     }
 
@@ -403,7 +524,7 @@ namespace TutorLiveMentor.Controllers
                     // ?? SAVE ALL CHANGES atomically
                     await _context.SaveChangesAsync();
                     
-                    // ? COMMIT TRANSACTION - All changes succeed together
+                    // ?? COMMIT TRANSACTION - All changes succeed together
                     await transaction.CommitAsync();
 
                     Console.WriteLine($"SelectSubject POST - Enrollment successful! Student: {student.FullName}, Subject: {assignedSubject.Subject.Name}");
@@ -412,8 +533,8 @@ namespace TutorLiveMentor.Controllers
                     await _signalRService.NotifySubjectSelection(assignedSubject, student);
 
                     // Check if subject is now full and notify availability change
-                    var maxLimit = assignedSubject.Subject.MaxEnrollments ?? 70;
-                    if (assignedSubject.SelectedCount >= maxLimit)
+                    var limit = assignedSubject.Subject.MaxEnrollments ?? 70;
+                    if (assignedSubject.SelectedCount >= limit)
                     {
                         await _signalRService.NotifySubjectAvailability(
                             assignedSubject.Subject.Name, 
@@ -422,12 +543,24 @@ namespace TutorLiveMentor.Controllers
                             false);
                     }
 
-                    TempData["SuccessMessage"] = $"Successfully enrolled in {assignedSubject.Subject.Name} with {assignedSubject.Faculty.Name}.";
+                    // Check if all selections are complete
+                    var allSelectionsComplete = await _selectionValidator.HasCompletedAllSelections(studentId);
+                    if (allSelectionsComplete)
+                    {
+                        HttpContext.Session.SetString("SelectionCompleted", "true");
+                        HttpContext.Session.Remove("IsInSelectionProcess");
+                        TempData["SuccessMessage"] = $"Successfully enrolled in {assignedSubject.Subject.Name} with {assignedSubject.Faculty.Name}. All selections completed!";
+                    }
+                    else
+                    {
+                        TempData["SuccessMessage"] = $"Successfully enrolled in {assignedSubject.Subject.Name} with {assignedSubject.Faculty.Name}. Please complete remaining selections.";
+                    }
+
                     return RedirectToAction("SelectSubject");
                 }
                 catch (Exception ex)
                 {
-                    // ? ROLLBACK on any error
+                    // ?? ROLLBACK on any error
                     Console.WriteLine($"SelectSubject POST - ERROR: {ex.Message}");
                     Console.WriteLine($"SelectSubject POST - Stack trace: {ex.StackTrace}");
                     await transaction.RollbackAsync();
@@ -438,6 +571,7 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpPost]
+        [StudentAuthorize]
         public async Task<IActionResult> UnenrollSubject(int assignedSubjectId)
         {
             // UNENROLLMENT DISABLED - Strict 70-student limit enforcement
@@ -448,6 +582,7 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpGet]
+        [StudentAuthorize]
         public async Task<IActionResult> Edit()
         {
             var studentId = HttpContext.Session.GetString("StudentId");
@@ -464,6 +599,7 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpPost]
+        [StudentAuthorize]
         public async Task<IActionResult> Edit(Student model)
         {
             var studentId = HttpContext.Session.GetString("StudentId");
@@ -502,6 +638,7 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> Logout()
         {
             var studentId = HttpContext.Session.GetString("StudentId");
@@ -519,6 +656,7 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpGet]
+        [StudentAuthorize]
         public async Task<IActionResult> SelectSubject()
         {
             var studentId = HttpContext.Session.GetString("StudentId");
@@ -527,6 +665,10 @@ namespace TutorLiveMentor.Controllers
                 Console.WriteLine("SelectSubject GET - Student not logged in");
                 return RedirectToAction("Login");
             }
+
+            // Set session flag to indicate student is in selection process
+            HttpContext.Session.SetString("IsInSelectionProcess", "true");
+            HttpContext.Session.Remove("SelectionCompleted");
 
             var student = await _context.Students
                 .Include(s => s.Enrollments)
@@ -543,28 +685,33 @@ namespace TutorLiveMentor.Controllers
                 return NotFound();
             }
 
-            Console.WriteLine($"SelectSubject GET - Student: {student.FullName}, Department: {student.Department}");
+            Console.WriteLine($"SelectSubject GET - Student: {student.FullName}, Department: '{student.Department}'");
 
-            // ? CRITICAL: CHECK FACULTY SELECTION SCHEDULE BEFORE LOADING PAGE
-            // Support both CSEDS and CSE(DS) formats
+            // ?? ENHANCED: CRITICAL FACULTY SELECTION SCHEDULE CHECK WITH OR CONDITION
+            // Get schedule by normalized department (FIXED)
+            var normalizedDept = DepartmentNormalizer.Normalize(student.Department);
             var schedule = await _context.FacultySelectionSchedules
-                .FirstOrDefaultAsync(s => s.Department == "CSEDS" || s.Department == "CSE(DS)" || s.Department == student.Department);
+                .FirstOrDefaultAsync(s => s.Department == normalizedDept);
 
-            Console.WriteLine($"SelectSubject GET - Schedule found: {schedule != null}");
             if (schedule != null)
             {
                 Console.WriteLine($"SelectSubject GET - Schedule Department: {schedule.Department}");
                 Console.WriteLine($"SelectSubject GET - Schedule IsEnabled: {schedule.IsEnabled}, UseSchedule: {schedule.UseSchedule}");
                 Console.WriteLine($"SelectSubject GET - Schedule IsCurrentlyAvailable: {schedule.IsCurrentlyAvailable}");
-                Console.WriteLine($"SelectSubject GET - Schedule StartDateTime: {schedule.StartDateTime}, EndDateTime: {schedule.EndDateTime}");
             }
 
-            // If schedule exists and faculty selection is NOT available, block access completely
-            if (schedule != null && !schedule.IsCurrentlyAvailable)
+            // ?? Check if schedule applies to this student and if selection is blocked
+            if (schedule != null)
             {
-                Console.WriteLine($"SelectSubject GET - ACCESS BLOCKED! IsCurrentlyAvailable: {schedule.IsCurrentlyAvailable}");
-                TempData["ErrorMessage"] = schedule.DisabledMessage ?? "Faculty selection is currently disabled by the administration.";
-                return RedirectToAction("MainDashboard");
+                var studentNormalizedDept = DepartmentNormalizer.Normalize(student.Department);
+                var scheduleNormalizedDept = DepartmentNormalizer.Normalize(schedule.Department);
+                
+                if (studentNormalizedDept == scheduleNormalizedDept && !schedule.IsCurrentlyAvailable)
+                {
+                    Console.WriteLine($"SelectSubject GET - ACCESS BLOCKED! IsCurrentlyAvailable: {schedule.IsCurrentlyAvailable}");
+                    TempData["ErrorMessage"] = schedule.DisabledMessage ?? "Faculty selection is currently disabled by the administration.";
+                    return RedirectToAction("MainDashboard");
+                }
             }
 
             Console.WriteLine("SelectSubject GET - Access granted, loading page");
@@ -576,16 +723,44 @@ namespace TutorLiveMentor.Controllers
             var availableSubjects = new List<AssignedSubject>();
             if (yearMap.TryGetValue(studentYearKey, out int studentYear))
             {
-                // ?? CRITICAL FIX: Filter subjects by BOTH year AND department
-                // This prevents students from seeing subjects from other departments
-                availableSubjects = await _context.AssignedSubjects
+                // Normalize student department first
+                var normalizedStudentDept = DepartmentNormalizer.Normalize(student.Department);
+                
+                Console.WriteLine($"SelectSubject GET - Student normalized dept: '{normalizedStudentDept}'");
+                Console.WriteLine($"SelectSubject GET - Student Year: {student.Year} -> {studentYear}");
+                
+                // Get ALL assigned subjects for the year first (no department filter in SQL)
+                var allYearSubjects = await _context.AssignedSubjects
                    .Include(a => a.Subject)
                    .Include(a => a.Faculty)
-                   .Where(a => a.Year == studentYear 
-                            && a.Department == student.Department)
+                   .Where(a => a.Year == studentYear)
                    .ToListAsync();
+                
+                Console.WriteLine($"SelectSubject GET - Found {allYearSubjects.Count} total subjects for Year={studentYear}");
+                
+                // ENHANCED LOGGING: Log all subjects with their exact departments
+                foreach (var subj in allYearSubjects)
+                {
+                    var subjRaw = subj.Subject.Department;
+                    var subjNormalized = DepartmentNormalizer.Normalize(subjRaw);
+                    var matches = (subjNormalized == normalizedStudentDept);
+                    Console.WriteLine($"  - {subj.Subject.Name} | Raw: '{subjRaw}' -> Normalized: '{subjNormalized}' | Match: {matches} | Type: {subj.Subject.SubjectType}");
+                }
+                
+                // Filter by normalized department in memory
+                availableSubjects = allYearSubjects
+                    .Where(a => {
+                        var subjNormalized = DepartmentNormalizer.Normalize(a.Subject.Department);
+                        var matches = subjNormalized == normalizedStudentDept;
+                        if (!matches)
+                        {
+                            Console.WriteLine($"  FILTERED OUT: {a.Subject.Name} ('{a.Subject.Department}' -> '{subjNormalized}' != '{normalizedStudentDept}')");
+                        }
+                        return matches;
+                    })
+                    .ToList();
 
-                Console.WriteLine($"SelectSubject GET - Found {availableSubjects.Count} subjects for Year={studentYear}, Department={student.Department}");
+                Console.WriteLine($"SelectSubject GET - After department filter: {availableSubjects.Count} subjects for Department='{normalizedStudentDept}'");
 
                 // Filter out subjects where student has already enrolled
                 var enrolledSubjectIds = student.Enrollments?.Select(e => e.AssignedSubject.SubjectId).ToList() ?? new List<int>();
@@ -593,8 +768,12 @@ namespace TutorLiveMentor.Controllers
                 
                 Console.WriteLine($"SelectSubject GET - After filtering enrolled subjects: {availableSubjects.Count} subjects available");
             }
+            else
+            {
+                Console.WriteLine($"SelectSubject GET - ERROR: Could not parse student year '{student.Year}' with key '{studentYearKey}'");
+            }
 
-            // ? NEW: Separate subjects by type
+            // Separate subjects by type
             var coreSubjects = availableSubjects
                 .Where(s => s.Subject.SubjectType == "Core" && s.SelectedCount < 70)
                 .ToList();
@@ -611,14 +790,33 @@ namespace TutorLiveMentor.Controllers
                 .Where(s => s.Subject.SubjectType == "ProfessionalElective3")
                 .ToList();
 
-            // ? NEW: Filter out full Professional Electives (check MaxEnrollments)
+            // Filter out full Professional Electives (check MaxEnrollments)
             professionalElective1 = FilterByMaxEnrollments(professionalElective1);
             professionalElective2 = FilterByMaxEnrollments(professionalElective2);
             professionalElective3 = FilterByMaxEnrollments(professionalElective3);
 
-            // ? NEW: Check if student has already selected from each elective type
+            // Check if student has already selected from each elective type
             var studentEnrollments = student.Enrollments?.Select(e => e.AssignedSubject.Subject.SubjectType).ToList() ?? new List<string>();
-            
+
+            // Check which electives have been selected
+            var hasSelectedPE1 = studentEnrollments.Contains("ProfessionalElective1");
+            var hasSelectedPE2 = studentEnrollments.Contains("ProfessionalElective2");
+            var hasSelectedPE3 = studentEnrollments.Contains("ProfessionalElective3");
+
+            // Clear the lists if already selected to hide the cards completely
+            if (hasSelectedPE1)
+            {
+                professionalElective1 = new List<AssignedSubject>();
+            }
+            if (hasSelectedPE2)
+            {
+                professionalElective2 = new List<AssignedSubject>();
+            }
+            if (hasSelectedPE3)
+            {
+                professionalElective3 = new List<AssignedSubject>();
+            }
+
             Console.WriteLine($"SelectSubject GET - Core: {coreSubjects.Count}, PE1: {professionalElective1.Count}, PE2: {professionalElective2.Count}, PE3: {professionalElective3.Count}");
 
             var viewModel = new StudentDashboardViewModel
@@ -628,9 +826,9 @@ namespace TutorLiveMentor.Controllers
                 ProfessionalElective1Subjects = professionalElective1,
                 ProfessionalElective2Subjects = professionalElective2,
                 ProfessionalElective3Subjects = professionalElective3,
-                HasSelectedProfessionalElective1 = studentEnrollments.Contains("ProfessionalElective1"),
-                HasSelectedProfessionalElective2 = studentEnrollments.Contains("ProfessionalElective2"),
-                HasSelectedProfessionalElective3 = studentEnrollments.Contains("ProfessionalElective3")
+                HasSelectedProfessionalElective1 = hasSelectedPE1,
+                HasSelectedProfessionalElective2 = hasSelectedPE2,
+                HasSelectedProfessionalElective3 = hasSelectedPE3
             };
 
             return View(viewModel);
@@ -690,6 +888,7 @@ namespace TutorLiveMentor.Controllers
         */
 
         [HttpGet]
+        [StudentAuthorize]
         public async Task<IActionResult> ChangePassword()
         {
             var studentId = HttpContext.Session.GetString("StudentId");
@@ -714,6 +913,7 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpPost]
+        [StudentAuthorize]
         public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
         {
             var studentId = HttpContext.Session.GetString("StudentId");

@@ -503,6 +503,77 @@
                 justify-content: center;
             }
         }
+    
+        /* App Footer Styling */
+        .app-footer {
+            background: rgba(249,250,242,0.95);
+            backdrop-filter: blur(12px);
+            border-top: 3px solid var(--slate, #CED3DC);
+            box-shadow: 0 -8px 32px rgba(39,64,96,0.13);
+            padding: 30px 20px;
+            margin-top: 50px;
+            text-align: center;
+            font-family: 'Montserrat', Arial, sans-serif;
+            color: #274060;
+            position: relative;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-line {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .footer-line.guidance { font-size: 1em; font-weight: 600; color: #444;
+            margin-bottom: 12px;
+        }
+
+        .footer-line.team {
+            font-size: 0.95em;
+            font-weight: 500;
+            color: #444;
+        }
+
+        .footer-line.copyright {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #274060;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid rgba(39,64,96,0.1);
+        }
+
+        .footer-highlight { color: #274060;
+            font-weight: 700;
+        }
+
+        .footer-name { color: #274060;
+            font-weight: 600;
+        }
+
+        @@media (max-width: 768px) {
+            .app-footer {
+                padding: 20px 15px;
+                margin-top: 30px;
+            }
+
+            .footer-line.guidance {
+                font-size: 0.9em;
+            }
+
+            .footer-line.team {
+                font-size: 0.85em;
+            }
+
+            .footer-line.copyright {
+                font-size: 0.8em;
+            }
+        }
     </style>
 </head>
 <body>
@@ -612,7 +683,6 @@
                                     e.AssignedSubject != null && 
                                     e.AssignedSubject.Subject != null && 
                                     e.AssignedSubject.Subject.Name == selectedSubject);
-                                var enrollmentTime = enrollment?.EnrolledAt.ToLocalTime().ToString("MMM dd, yyyy hh:mm:ss.fff tt") ?? "N/A";
                                 
                                 <tr data-student-id="@student.Id">
                                     <td class="col-regdNumber">@student.RegdNumber</td>
@@ -620,7 +690,9 @@
                                     <td class="col-email">@student.Email</td>
                                     <td class="col-year">@student.Year</td>
                                     <td class="col-department">@student.Department</td>
-                                    <td class="col-enrollmentTime">@enrollmentTime</td>
+                                    <td class="col-enrollmentTime">
+                                        <strong data-enrollment-time="@(enrollment?.EnrolledAt.ToString("o"))"></strong>
+                                    </td>
                                 </tr>
                                 serialNo++;
                             }
@@ -649,7 +721,7 @@
     </div>
 
     <script>
-        // 🚀 REPORT GENERATION VARIABLES
+        // REPORT GENERATION VARIABLES
         let currentReportData = [];
         const selectedSubject = '@selectedSubject';
 
@@ -662,6 +734,22 @@
             department: true,
             enrollmentTime: true
         };
+
+        // Format datetime for display (exactly as shown in web)
+        function formatEnrollmentTime(isoString) {
+            if (!isoString) return '';
+            const date = new Date(isoString);
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            const year = date.getFullYear();
+            let hours = date.getHours();
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            const milliseconds = String(date.getMilliseconds()).padStart(3, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            return `${month}/${day}/${year} ${String(hours).padStart(2, '0')}:${minutes}:${seconds}.${milliseconds} ${ampm}`;
+        }
 
         function updateColumnVisibility() {
             // Update visibility state
@@ -683,6 +771,17 @@
                 }
             }
         }
+
+        // Format times on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const timeElements = document.querySelectorAll('[data-enrollment-time]');
+            timeElements.forEach(el => {
+                const isoTime = el.getAttribute('data-enrollment-time');
+                if (isoTime) {
+                    el.textContent = formatEnrollmentTime(isoTime);
+                }
+            });
+        });
 
         async function generateReport() {
             if (!selectedSubject) {
@@ -716,6 +815,27 @@
             }
         }
 
+        // Collect formatted display data from HTML table
+        function collectDisplayData() {
+            const table = document.getElementById('studentsTable');
+            const rows = table.querySelectorAll('tbody tr');
+            const displayData = [];
+
+            rows.forEach(row => {
+                const displayRow = {
+                    StudentRegdNumber: row.querySelector('.col-regdNumber')?.textContent.trim() || '',
+                    StudentName: row.querySelector('.col-studentName')?.textContent.trim() || '',
+                    StudentEmail: row.querySelector('.col-email')?.textContent.trim() || '',
+                    StudentYear: row.querySelector('.col-year')?.textContent.trim() || '',
+                    Department: row.querySelector('.col-department')?.textContent.trim() || '',
+                    EnrollmentTimeFormatted: row.querySelector('.col-enrollmentTime strong')?.textContent.trim() || ''
+                };
+                displayData.push(displayRow);
+            });
+
+            return displayData;
+        }
+
         async function exportExcel() {
             if (currentReportData.length === 0) {
                 alert('No data to export. Please load the report first.');
@@ -728,9 +848,12 @@
                 exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exporting...';
                 exportBtn.disabled = true;
 
+                // Get formatted display data from HTML table
+                const displayData = collectDisplayData();
+
                 const exportData = {
                     SubjectName: selectedSubject,
-                    ReportData: currentReportData,
+                    DisplayData: displayData,
                     SelectedColumns: {
                         RegdNumber: visibleColumns.regdNumber,
                         StudentName: visibleColumns.studentName,
@@ -790,9 +913,12 @@
                 exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exporting...';
                 exportBtn.disabled = true;
 
+                // Get formatted display data from HTML table
+                const displayData = collectDisplayData();
+
                 const exportData = {
                     SubjectName: selectedSubject,
-                    ReportData: currentReportData,
+                    DisplayData: displayData,
                     SelectedColumns: {
                         RegdNumber: visibleColumns.regdNumber,
                         StudentName: visibleColumns.studentName,
@@ -840,7 +966,7 @@
             }
         }
 
-        // 🚀 SIGNALR REAL-TIME CONNECTION
+        // SIGNALR REAL-TIME CONNECTION
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("/selectionHub")
             .withAutomaticReconnect()
@@ -850,12 +976,12 @@
         const statusElement = document.getElementById('connectionStatus');
         
         connection.start().then(function () {
-            console.log('🚀 SignalR Connected for Faculty!');
+            console.log('SignalR Connected for Faculty!');
             statusElement.innerHTML = '<span class="status-dot connected"></span> Live Updates Active';
             statusElement.className = 'connection-status connected';
             
         }).catch(function (err) {
-            console.error('❌ SignalR Connection Error:', err);
+            console.error('SignalR Connection Error:', err);
             statusElement.innerHTML = '<span class="status-dot disconnected"></span> Offline Mode';
             statusElement.className = 'connection-status disconnected';
         });
@@ -871,11 +997,11 @@
             showNotification('Connection restored! Live updates are back online.', 'success');
         });
 
-        // 🚀 REAL-TIME EVENT HANDLERS FOR FACULTY
+        // REAL-TIME EVENT HANDLERS FOR FACULTY
 
         // Student enrollment changes (specific to faculty)
         connection.on("StudentEnrollmentChanged", function (data) {
-            console.log('👨‍🏫 Faculty: Student Enrollment Changed:', data);
+            console.log('Faculty: Student Enrollment Changed:', data);
             
             // Update live counts in dropdown
             updateSubjectCount(data.AssignedSubjectId, data.NewCount);
@@ -888,7 +1014,7 @@
             // Show notification
             const actionColor = data.Action === 'Enrolled' ? 'success' : 'info';
             showNotification(
-                `📚 ${data.SubjectName}: ${data.StudentName} ${data.Action.toLowerCase()}. 
+                `${data.SubjectName}: ${data.StudentName} ${data.Action.toLowerCase()}. 
                  Current enrollment: ${data.NewCount} students`,
                 actionColor
             );
@@ -896,22 +1022,22 @@
 
         // General subject selection updates
         connection.on("SubjectSelectionUpdated", function (data) {
-            console.log('📈 Faculty: Subject Selection Update:', data);
+            console.log('Faculty: Subject Selection Update:', data);
             updateSubjectCount(data.AssignedSubjectId, data.NewCount);
         });
 
         // General subject unenrollment updates  
         connection.on("SubjectUnenrollmentUpdated", function (data) {
-            console.log('📉 Faculty: Subject Unenrollment Update:', data);
+            console.log('Faculty: Subject Unenrollment Update:', data);
             updateSubjectCount(data.AssignedSubjectId, data.NewCount);
         });
 
         // User activity notifications
         connection.on("UserActivity", function (data) {
             if (data.UserType === 'Student' && (data.Action === 'Logged In' || data.Action === 'Logged Out')) {
-                console.log('👤 Student Activity:', data);
+                console.log('Student Activity:', data);
                 showNotification(
-                    `👤 ${data.UserName} (Student) ${data.Action.toLowerCase()}`,
+                    `${data.UserName} (Student) ${data.Action.toLowerCase()}`,
                     'info'
                 );
             }
@@ -922,7 +1048,7 @@
             showNotification(data.Message, data.Type);
         });
 
-        // 🚀 HELPER FUNCTIONS
+        // HELPER FUNCTIONS
 
         function updateSubjectCount(assignedSubjectId, newCount) {
             // Update count in dropdown options
@@ -951,7 +1077,7 @@
             // If someone enrolled and we're on an empty page, suggest refresh
             if (data.Action === 'Enrolled' && data.NewCount === 1) {
                 showNotification(
-                    '🔄 New student enrolled! Refresh the page to see the updated list.',
+                    'New student enrolled! Refresh the page to see the updated list.',
                     'info'
                 );
             }
@@ -998,24 +1124,73 @@
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => {
                 if (connection.state === signalR.HubConnectionState.Connected) {
-                    showNotification('🚀 Faculty dashboard connected! You\'ll receive real-time enrollment notifications.', 'success');
+                    showNotification('Faculty dashboard connected! You\'ll receive real-time enrollment notifications.', 'success');
                 }
             }, 2000);
 
             // Initialize column visibility
             updateColumnVisibility();
+            
+            // Format enrollment times on page load
+            formatEnrollmentTimes();
         });
 
-        // CSS for pulse animation
-        const style = document.createElement('style');
-        style.textContent = `
-            @@keyframes pulse {
-                0% { transform: scale(1); }
-                50% { transform: scale(1.1); color: var(--success-green); }
-                100% { transform: scale(1); }
+        // Format enrollment time correctly with milliseconds - MATCH SERVER FORMAT
+        function formatEnrollmentTime(enrolledAt) {
+            if (!enrolledAt) return 'N/A';
+            
+            // Ensure proper UTC parsing by adding 'Z' if not present
+            let dateString = enrolledAt;
+            if (!dateString.endsWith('Z') && !dateString.includes('+')) {
+                dateString = dateString + 'Z'; // Force UTC interpretation
             }
-        `;
-        document.head.appendChild(style);
+            
+            // Parse as UTC and convert to local time
+            const date = new Date(dateString);
+            
+            // Format to match server-side format: MM/dd/yyyy hh:mm:ss.fff tt
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const year = date.getFullYear();
+            
+            let hours = date.getHours();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // 0 should be 12
+            const hoursStr = String(hours).padStart(2, '0');
+            
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            const milliseconds = String(date.getMilliseconds()).padStart(3, '0');
+            
+            // Return formatted string matching server format: "MM/dd/yyyy hh:mm:ss.fff tt"
+            return `${month}/${day}/${year} ${hoursStr}:${minutes}:${seconds}.${milliseconds} ${ampm}`;
+        }
+
+        // Format all enrollment times in the table
+        function formatEnrollmentTimes() {
+            const enrollmentTimeElements = document.querySelectorAll('[data-enrollment-time]');
+            
+            enrollmentTimeElements.forEach(element => {
+                const utcTime = element.getAttribute('data-enrollment-time');
+                const formattedTime = formatEnrollmentTime(utcTime);
+                element.textContent = formattedTime;
+            });
+        }
     </script>
+
+    <footer class="app-footer">
+        <div class="footer-content">
+            <div class="footer-line guidance">
+                Developed under the guidance of <span class="footer-highlight">Dr. P. Penchala Prasad</span>, Associate Professor, CSE(DS), RGMCET
+            </div>
+            <div class="footer-line team">
+                With team <span class="footer-name">Mr. S. Md. Shahid Afrid</span> (23091A32D4) & <span class="footer-name">Ms. G. Veena</span> (23091A32H9)
+            </div>
+            <div class="footer-line copyright">
+                &copy; All Rights Reserved @@2025
+            </div>
+        </div>
+    </footer>
 </body>
 </html>

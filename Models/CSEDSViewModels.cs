@@ -90,8 +90,8 @@ namespace TutorLiveMentor.Models
         [StringLength(100, ErrorMessage = "Subject name cannot exceed 100 characters")]
         public string Name { get; set; } = string.Empty;
 
-        // Department is automatically set to CSEDS
-        public string Department { get; set; } = "CSEDS";
+        // Department is automatically set to CSE(DS)
+        public string Department { get; set; } = "CSE(DS)";
 
         [Required(ErrorMessage = "Year is required")]
         public int Year { get; set; }
@@ -489,7 +489,7 @@ namespace TutorLiveMentor.Models
         public List<Subject> AvailableSubjects { get; set; } = new List<Subject>();
         public string Department { get; set; } = "CSEDS";
         public string AdminEmail { get; set; } = string.Empty;
-        public List<int> AvailableYears { get; set; } = new List<int> { 1, 2, 3, 4 };
+        public List<string> AvailableYears { get; set; } = new List<string> { "II Year", "III Year", "IV Year" };
         public List<SemesterOption> AvailableSemesters { get; set; } = new List<SemesterOption>
         {
             new SemesterOption { Value = "I", Text = "Semester I (1)", NumericValue = 1 },
@@ -556,8 +556,8 @@ namespace TutorLiveMentor.Models
         [Required(ErrorMessage = "Year is required")]
         public string Year { get; set; } = string.Empty;
 
-        // Department is automatically set to CSEDS
-        public string Department { get; set; } = "CSEDS";
+        // Department is automatically set to CSE(DS)
+        public string Department { get; set; } = "CSE(DS)";
 
         // Available options for dropdowns
         public List<string> AvailableYears { get; set; } = new List<string> { "I Year", "II Year", "III Year", "IV Year" };

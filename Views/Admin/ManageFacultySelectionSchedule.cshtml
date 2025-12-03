@@ -1,4 +1,4 @@
-@model TutorLiveMentor.Models.FacultySelectionScheduleViewModel
+﻿@model TutorLiveMentor.Models.FacultySelectionScheduleViewModel
 @{
     ViewData["Title"] = "Faculty Selection Schedule - CSEDS";
     Layout = null;
@@ -24,7 +24,6 @@
             --error-red: #dc3545;
             --cseds-purple: #6f42c1;
             --cseds-teal: #20c997;
-            --schedule-red: #e74c3c;
         }
 
         body {
@@ -34,21 +33,6 @@
             font-family: 'Montserrat', Arial, sans-serif;
             background: linear-gradient(rgba(249, 250, 242, 0.15), rgba(255, 200, 87, 0.10)),
             url('@Url.Content("~/images/RGMCET-BACKGROUND.jpg")') center center/cover no-repeat fixed;
-            position: relative;
-        }
-
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 0;
-            display: block;
-            background: linear-gradient(135deg, var(--cream) 60%, var(--warm-gold) 100%);
-            opacity: 0.20;
-            pointer-events: none;
         }
 
         .main-container {
@@ -69,123 +53,28 @@
             border: 2px solid var(--slate);
         }
 
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header-content h1 {
-            font-size: 2em;
-            font-weight: 700;
-            color: var(--royal-blue);
-            margin: 0;
-        }
-
-        .back-btn {
-            background: linear-gradient(135deg, var(--cseds-purple), var(--cseds-teal));
+        .btn-primary {
+            background: linear-gradient(135deg, var(--success-green), var(--cseds-teal));
             color: white;
             border: none;
             border-radius: 20px;
-            padding: 10px 20px;
+            padding: 15px 30px;
+            font-size: 1.1em;
             font-weight: 600;
-            text-decoration: none;
+            cursor: pointer;
             transition: all 0.3s ease;
         }
 
-        .back-btn:hover {
+        .btn-primary:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(111, 66, 193, 0.4);
-            text-decoration: none;
-            color: white;
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
         }
 
-        /* Status Banner */
-        .status-banner {
-            background: rgba(249,250,242,0.95);
-            border-radius: 15px;
-            padding: 20px 30px;
-            margin-bottom: 30px;
-            backdrop-filter: blur(12px);
-            border: 3px solid;
-            display: flex;
-            align-items: center;
-            gap: 20px;
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
-        .status-banner.active {
-            border-color: var(--success-green);
-            background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(32, 201, 151, 0.1));
-        }
-
-        .status-banner.inactive {
-            border-color: var(--error-red);
-            background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(231, 76, 60, 0.1));
-        }
-
-        .status-icon {
-            font-size: 3em;
-        }
-
-        .status-icon.active { color: var(--success-green); }
-        .status-icon.inactive { color: var(--error-red); }
-
-        .status-info h3 {
-            margin: 0 0 10px 0;
-            color: var(--royal-blue);
-            font-size: 1.5em;
-        }
-
-        .status-info p {
-            margin: 0;
-            color: #666;
-            font-size: 1.1em;
-        }
-
-        /* Control Cards */
-        .control-section {
-            background: rgba(249,250,242,0.95);
-            border-radius: 20px;
-            padding: 30px;
-            margin-bottom: 30px;
-            backdrop-filter: blur(12px);
-            border: 2px solid var(--slate);
-            box-shadow: 0 8px 32px var(--card-shadow);
-        }
-
-        .section-title {
-            color: var(--royal-blue);
-            font-size: 1.4em;
-            font-weight: 700;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .toggle-switch-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            background: rgba(111, 66, 193, 0.05);
-            border-radius: 15px;
-            margin-bottom: 20px;
-            border: 2px solid rgba(111, 66, 193, 0.2);
-        }
-
-        .toggle-info h5 {
-            margin: 0 0 5px 0;
-            color: var(--royal-blue);
-            font-size: 1.2em;
-        }
-
-        .toggle-info p {
-            margin: 0;
-            color: #666;
-        }
-
-        /* Toggle Switch */
         .toggle-switch {
             position: relative;
             display: inline-block;
@@ -231,229 +120,170 @@
             transform: translateX(36px);
         }
 
-        /* Form Controls */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            font-weight: 600;
-            color: var(--royal-blue);
-            margin-bottom: 8px;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid var(--slate);
-            border-radius: 12px;
-            font-size: 1em;
-            font-family: 'Montserrat', sans-serif;
-            background: rgba(249,250,242,0.8);
-            transition: border-color 0.3s, box-shadow 0.3s;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--cseds-purple);
-            box-shadow: 0 0 0 3px rgba(111, 66, 193, 0.2);
-        }
-
-        textarea.form-control {
-            resize: vertical;
-            min-height: 100px;
-        }
-
-        /* Date Time Row */
-        .datetime-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        /* Impact Summary */
-        .impact-summary {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .impact-card {
-            background: linear-gradient(135deg, var(--cseds-purple), var(--cseds-teal));
-            color: white;
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .impact-card h4 {
-            font-size: 2em;
-            margin: 0 0 5px 0;
-            font-weight: 700;
-        }
-
-        .impact-card p {
-            margin: 0;
-            font-size: 0.9em;
-            opacity: 0.9;
-        }
-
-        /* Action Buttons */
-        .action-buttons {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--success-green), var(--cseds-teal));
-            color: white;
-            border: none;
-            border-radius: 20px;
-            padding: 15px 30px;
-            font-size: 1.1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            flex: 1;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
-        }
-
-        .btn-secondary {
-            background: rgba(206, 211, 220, 0.5);
-            color: var(--royal-blue);
-            border: 2px solid var(--slate);
-            border-radius: 20px;
-            padding: 15px 30px;
-            font-size: 1.1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-secondary:hover {
-            background: var(--slate);
-        }
-
-        /* Alert Messages */
         .alert {
-            padding: 15px 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            padding: 20px 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 15px;
+            font-size: 1.05em;
+            font-weight: 600;
+            animation: slideDown 0.4s ease-out;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-width: 3px;
+            border-style: solid;
+        }
+
+        @@keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .alert-success {
-            background: rgba(40, 167, 69, 0.1);
-            border: 2px solid var(--success-green);
-            color: var(--success-green);
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.95), rgba(32, 201, 151, 0.95));
+            border-color: #1e7e34;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .alert-success i {
+            font-size: 1.8em;
+            color: white;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
         }
 
         .alert-danger {
-            background: rgba(220, 53, 69, 0.1);
-            border: 2px solid var(--error-red);
-            color: var(--error-red);
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.95), rgba(255, 82, 82, 0.95));
+            border-color: #bd2130;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
 
-        .alert-info {
-            background: rgba(32, 201, 151, 0.1);
-            border: 2px solid var(--cseds-teal);
-            color: var(--cseds-teal);
+        .alert-danger i {
+            font-size: 1.8em;
+            color: white;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
         }
 
-        /* Audit Info */
-        .audit-info {
-            background: rgba(111, 66, 193, 0.05);
-            border-radius: 10px;
-            padding: 15px 20px;
-            margin-top: 20px;
-            border-left: 4px solid var(--cseds-purple);
+        .alert-content {
+            flex: 1;
+            line-height: 1.6;
+            font-weight: 500;
         }
 
-        .audit-info p {
-            margin: 5px 0;
-            color: #666;
+        .alert-close {
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+            font-size: 1.5em;
+            padding: 0 8px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .alert-close:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+    
+        /* App Footer Styling */
+        .app-footer {
+            background: rgba(249,250,242,0.95);
+            backdrop-filter: blur(12px);
+            border-top: 3px solid var(--slate, #CED3DC);
+            box-shadow: 0 -8px 32px rgba(39,64,96,0.13);
+            padding: 30px 20px;
+            margin-top: 50px;
+            text-align: center;
+            font-family: 'Montserrat', Arial, sans-serif;
+            color: #274060;
+            position: relative;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-line {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .footer-line.guidance { font-size: 1em; font-weight: 600; color: #444;
+            margin-bottom: 12px;
+        }
+
+        .footer-line.team {
+            font-size: 0.95em;
+            font-weight: 500;
+            color: #444;
+        }
+
+        .footer-line.copyright {
             font-size: 0.9em;
+            font-weight: 600;
+            color: #274060;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid rgba(39,64,96,0.1);
         }
 
-        .audit-info strong {
-            color: var(--royal-blue);
+        .footer-highlight { color: #274060;
+            font-weight: 700;
         }
 
-        /* Responsive */
+        .footer-name { color: #274060;
+            font-weight: 600;
+        }
+
         @@media (max-width: 768px) {
-            .datetime-row {
-                grid-template-columns: 1fr;
+            .app-footer {
+                padding: 20px 15px;
+                margin-top: 30px;
             }
 
-            .header-content {
-                flex-direction: column;
-                gap: 15px;
-                text-align: center;
+            .footer-line.guidance {
+                font-size: 0.9em;
             }
 
-            .status-banner {
-                flex-direction: column;
-                text-align: center;
+            .footer-line.team {
+                font-size: 0.85em;
             }
 
-            .action-buttons {
-                flex-direction: column;
+            .footer-line.copyright {
+                font-size: 0.8em;
             }
         }
     </style>
 </head>
 <body>
+    @Html.AntiForgeryToken()
     <div class="main-container">
-        <!-- Header -->
         <div class="header-section">
-            <div class="header-content">
-                <h1><i class="fas fa-clock"></i> Faculty Selection Schedule</h1>
-                <a href="@Url.Action("CSEDSDashboard", "Admin")" class="back-btn">
-                    <i class="fas fa-arrow-left"></i> Back to Dashboard
-                </a>
-            </div>
+            <h1><i class="fas fa-clock"></i> Faculty Selection Schedule - @Model.Department</h1>
+            <a href="@Url.Action("CSEDSDashboard", "Admin")" class="btn-primary" style="display:inline-block;text-decoration:none;">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
         </div>
 
-        <!-- Current Status Banner -->
-        <div class="status-banner @(Model.IsCurrentlyAvailable ? "active" : "inactive")">
-            <div class="status-icon @(Model.IsCurrentlyAvailable ? "active" : "inactive")">
-                @if (Model.IsCurrentlyAvailable)
-                {
-                    <i class="fas fa-check-circle"></i>
-                }
-                else
-                {
-                    <i class="fas fa-times-circle"></i>
-                }
-            </div>
-            <div class="status-info">
-                <h3>Current Status: @(Model.IsCurrentlyAvailable ? "ACTIVE" : "DISABLED")</h3>
-                <p>@Model.StatusDescription</p>
-            </div>
-        </div>
-
-        <!-- Alert Messages -->
         <div id="alertContainer"></div>
 
-        <!-- Master Toggle Section -->
-        <div class="control-section">
-            <h4 class="section-title">
-                <i class="fas fa-power-off"></i> Master Control
-            </h4>
-
-            <div class="toggle-switch-container">
-                <div class="toggle-info">
-                    <h5>Faculty Selection</h5>
-                    <p>Toggle to instantly enable or disable faculty selection for all CSEDS students</p>
+        <div class="header-section">
+            <h4>Master Control</h4>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:20px;background:rgba(111,66,193,0.05);border-radius:15px;">
+                <div>
+                    <h5 style="margin:0;">Faculty Selection</h5>
+                    <p style="margin:0;color:#666;">Toggle to enable or disable faculty selection</p>
                 </div>
                 <label class="toggle-switch">
                     <input type="checkbox" id="isEnabledToggle" @(Model.IsEnabled ? "checked" : "")>
@@ -461,309 +291,137 @@
                 </label>
             </div>
 
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i>
-                <div>
-                    <strong>Quick Action:</strong> When disabled, students will see a message and cannot select faculty, regardless of schedule settings.
-                </div>
-            </div>
-        </div>
-
-        <!-- Schedule Settings -->
-        <div class="control-section">
-            <h4 class="section-title">
-                <i class="fas fa-calendar-alt"></i> Schedule Settings
-            </h4>
-
-            <div class="toggle-switch-container">
-                <div class="toggle-info">
-                    <h5>Use Time-Based Schedule</h5>
-                    <p>Enable to set specific start and end dates/times for faculty selection period</p>
-                </div>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="useScheduleToggle" @(Model.UseSchedule ? "checked" : "")>
-                    <span class="toggle-slider"></span>
+            <div style="margin-top:20px;">
+                <label for="disabledMessage" style="display:block;font-weight:600;margin-bottom:10px;">
+                    Disabled Message (10-500 characters)
                 </label>
-            </div>
-
-            <div id="scheduleFields" style="@(Model.UseSchedule ? "" : "display: none;")">
-                <div class="datetime-row">
-                    <div class="form-group">
-                        <label for="startDateTime">
-                            <i class="fas fa-play-circle"></i> Start Date & Time
-                        </label>
-                        <input type="datetime-local" id="startDateTime" class="form-control" 
-                               value="@(Model.StartDateTime?.ToString("yyyy-MM-ddTHH:mm"))" />
-                    </div>
-
-                    <div class="form-group">
-                        <label for="endDateTime">
-                            <i class="fas fa-stop-circle"></i> End Date & Time
-                        </label>
-                        <input type="datetime-local" id="endDateTime" class="form-control" 
-                               value="@(Model.EndDateTime?.ToString("yyyy-MM-ddTHH:mm"))" />
-                    </div>
-                </div>
-
-                <div class="alert alert-info">
-                    <i class="fas fa-lightbulb"></i>
-                    <div>
-                        Students can only select faculty between the start and end dates/times when schedule mode is enabled.
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Custom Message -->
-        <div class="control-section">
-            <h4 class="section-title">
-                <i class="fas fa-comment-alt"></i> Custom Message
-            </h4>
-
-            <div class="form-group">
-                <label for="disabledMessage">
-                    Message to display when faculty selection is disabled
-                </label>
-                <textarea id="disabledMessage" class="form-control" 
-                          rows="4" maxlength="500">@Model.DisabledMessage</textarea>
-                <small class="text-muted">
+                <textarea id="disabledMessage" style="width:100%;padding:12px;border:2px solid var(--slate);border-radius:12px;font-family:Montserrat;min-height:100px;" maxlength="500">@Model.DisabledMessage</textarea>
+                <small style="color:#666;">
                     <span id="charCount">@Model.DisabledMessage.Length</span> / 500 characters
                 </small>
             </div>
 
-            <div class="alert alert-info">
-                <i class="fas fa-eye"></i>
-                <div>
-                    <strong>Preview:</strong> Students will see this message when they try to access faculty selection and it's disabled.
-                </div>
+            <div style="margin-top:30px;">
+                <button type="button" class="btn-primary" id="saveBtn">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
             </div>
-        </div>
-
-        <!-- Impact Summary -->
-        <div class="control-section">
-            <h4 class="section-title">
-                <i class="fas fa-chart-pie"></i> Impact Summary
-            </h4>
-
-            <p style="color: #666; margin-bottom: 20px;">
-                These settings will affect the following CSEDS department resources:
-            </p>
-
-            <div class="impact-summary">
-                <div class="impact-card">
-                    <h4>@Model.AffectedStudents</h4>
-                    <p><i class="fas fa-user-graduate"></i> Students</p>
-                </div>
-                <div class="impact-card">
-                    <h4>@Model.AffectedSubjects</h4>
-                    <p><i class="fas fa-book"></i> Subjects</p>
-                </div>
-                <div class="impact-card">
-                    <h4>@Model.TotalEnrollments</h4>
-                    <p><i class="fas fa-users"></i> Enrollments</p>
-                </div>
-            </div>
-
-            <!-- Audit Trail -->
-            @if (Model.UpdatedAt.HasValue)
-            {
-                <div class="audit-info">
-                    <p><i class="fas fa-clock"></i> <strong>Last Updated:</strong> @Model.UpdatedAt.Value.ToString("MMM dd, yyyy hh:mm tt")</p>
-                    @if (!string.IsNullOrEmpty(Model.UpdatedBy))
-                    {
-                        <p><i class="fas fa-user"></i> <strong>Updated By:</strong> @Model.UpdatedBy</p>
-                    }
-                </div>
-            }
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="action-buttons">
-            <button type="button" class="btn-primary" id="saveBtn">
-                <i class="fas fa-save"></i> Save Changes
-            </button>
-            <button type="button" class="btn-secondary" id="resetBtn">
-                <i class="fas fa-undo"></i> Reset
-            </button>
         </div>
     </div>
 
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
     <script>
-        // Store original values
-        const originalValues = {
-            isEnabled: @(Model.IsEnabled ? "true" : "false"),
-            useSchedule: @(Model.UseSchedule ? "true" : "false"),
-            startDateTime: '@(Model.StartDateTime?.ToString("yyyy-MM-ddTHH:mm") ?? "")',
-            endDateTime: '@(Model.EndDateTime?.ToString("yyyy-MM-ddTHH:mm") ?? "")',
-            disabledMessage: `@Html.Raw(Model.DisabledMessage)`
-        };
+        console.log('? PAGE LOADING...');
+        console.log('? jQuery loaded?', typeof jQuery !== 'undefined');
 
-        $(document).ready(function() {
-            // Toggle schedule fields visibility
-            $('#useScheduleToggle').change(function() {
-                if ($(this).is(':checked')) {
-                    $('#scheduleFields').slideDown();
-                } else {
-                    $('#scheduleFields').slideUp();
-                }
-            });
-
-            // Character counter for message
-            $('#disabledMessage').on('input', function() {
-                $('#charCount').text($(this).val().length);
-            });
-
-            // Save button
-            $('#saveBtn').click(function() {
-                saveSchedule();
-            });
-
-            // Reset button
-            $('#resetBtn').click(function() {
-                if (confirm('Are you sure you want to reset all changes?')) {
-                    resetForm();
-                }
-            });
+        // Character counter
+        $('#disabledMessage').on('input', function() {
+            $('#charCount').text($(this).val().length);
         });
 
-        function saveSchedule() {
+        // Save button
+        $('#saveBtn').on('click', function() {
+            console.log('? BUTTON CLICKED!');
+            
             const isEnabled = $('#isEnabledToggle').is(':checked');
-            const useSchedule = $('#useScheduleToggle').is(':checked');
-            const startDateTime = $('#startDateTime').val();
-            const endDateTime = $('#endDateTime').val();
-            const disabledMessage = $('#disabledMessage').val();
+            const disabledMessage = $('#disabledMessage').val().trim();
+
+            console.log('Data:', { isEnabled, disabledMessage });
 
             // Validation
-            if (useSchedule && (!startDateTime || !endDateTime)) {
-                showAlert('danger', 'Please provide both start and end dates when using schedule mode.');
+            if (disabledMessage.length < 10) {
+                alert('Message must be at least 10 characters. Current: ' + disabledMessage.length);
                 return;
             }
 
-            if (useSchedule && startDateTime >= endDateTime) {
-                showAlert('danger', 'End date must be after start date.');
+            if (!confirm('Are you sure you want to ' + (isEnabled ? 'ENABLE' : 'DISABLE') + ' faculty selection?')) {
                 return;
             }
 
-            if (!disabledMessage || disabledMessage.length < 10) {
-                showAlert('danger', 'Disabled message must be at least 10 characters long.');
+            // Get token
+            const token = $('input[name="__RequestVerificationToken"]').val();
+            if (!token) {
+                alert('Security token missing! Refresh the page.');
                 return;
             }
 
-            // Prepare data
-            const data = {
-                ScheduleId: @Model.ScheduleId,
-                Department: '@Model.Department',
-                IsEnabled: isEnabled,
-                UseSchedule: useSchedule,
-                StartDateTime: startDateTime || null,
-                EndDateTime: endDateTime || null,
-                DisabledMessage: disabledMessage
-            };
+            console.log('? Sending AJAX request...');
 
-            // Show loading
-            $('#saveBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+            // Disable button
+            const btn = $(this);
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
 
-            // Send AJAX request
+            // AJAX request
             $.ajax({
                 url: '@Url.Action("UpdateFacultySelectionSchedule", "Admin")',
                 type: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify(data),
+                data: JSON.stringify({
+                    ScheduleId: @Model.ScheduleId,
+                    Department: '@Model.Department',
+                    IsEnabled: isEnabled,
+                    UseSchedule: false,
+                    StartDateTime: null,
+                    EndDateTime: null,
+                    DisabledMessage: disabledMessage
+                }),
+                headers: {
+                    'RequestVerificationToken': token
+                },
                 success: function(response) {
+                    console.log('? SUCCESS!', response);
                     if (response.success) {
-                        showAlert('success', response.message);
-                        
-                        // Update status banner
-                        updateStatusBanner(response.data.isCurrentlyAvailable, response.data.statusDescription);
-                        
-                        // Update original values
-                        originalValues.isEnabled = isEnabled;
-                        originalValues.useSchedule = useSchedule;
-                        originalValues.startDateTime = startDateTime;
-                        originalValues.endDateTime = endDateTime;
-                        originalValues.disabledMessage = disabledMessage;
-                        
-                        // Reload page after 2 seconds to reflect changes
+                        $('#alertContainer').html(
+                            '<div class="alert alert-success">' +
+                            '<i class="fas fa-check-circle"></i> ' +
+                            '<div class="alert-content">' + response.message + '</div>' +
+                            '<span class="alert-close" onclick="this.parentElement.remove()">�</span>' +
+                            '</div>'
+                        );
                         setTimeout(function() {
                             location.reload();
                         }, 2000);
                     } else {
-                        showAlert('danger', response.message || 'Failed to save schedule');
+                        $('#alertContainer').html(
+                            '<div class="alert alert-danger">' +
+                            '<i class="fas fa-exclamation-circle"></i> ' +
+                            '<div class="alert-content">' + response.message + '</div>' +
+                            '<span class="alert-close" onclick="this.parentElement.remove()">�</span>' +
+                            '</div>'
+                        );
+                        btn.prop('disabled', false).html('<i class="fas fa-save"></i> Save Changes');
                     }
                 },
-                error: function(xhr, status, error) {
-                    showAlert('danger', 'Error saving schedule: ' + error);
-                },
-                complete: function() {
-                    $('#saveBtn').prop('disabled', false).html('<i class="fas fa-save"></i> Save Changes');
+                error: function(xhr) {
+                    console.error('? ERROR!', xhr);
+                    $('#alertContainer').html(
+                        '<div class="alert alert-danger">' +
+                        '<i class="fas fa-exclamation-triangle"></i> ' +
+                        '<div class="alert-content">Failed to save changes. Status: ' + xhr.status + '. Please try again.</div>' +
+                        '<span class="alert-close" onclick="this.parentElement.remove()">�</span>' +
+                        '</div>'
+                    );
+                    btn.prop('disabled', false).html('<i class="fas fa-save"></i> Save Changes');
                 }
             });
-        }
+        });
 
-        function resetForm() {
-            $('#isEnabledToggle').prop('checked', originalValues.isEnabled === 'true');
-            $('#useScheduleToggle').prop('checked', originalValues.useSchedule === 'true');
-            $('#startDateTime').val(originalValues.startDateTime);
-            $('#endDateTime').val(originalValues.endDateTime);
-            $('#disabledMessage').val(originalValues.disabledMessage);
-            $('#charCount').text(originalValues.disabledMessage.length);
-
-            if (originalValues.useSchedule === 'true') {
-                $('#scheduleFields').slideDown();
-            } else {
-                $('#scheduleFields').slideUp();
-            }
-
-            showAlert('info', 'Form reset to last saved values.');
-        }
-
-        function showAlert(type, message) {
-            const alertClass = 'alert-' + type;
-            const icon = type === 'success' ? 'check-circle' : 
-                        type === 'danger' ? 'exclamation-circle' : 'info-circle';
-
-            const alertHtml = `
-                <div class="alert ${alertClass}" role="alert">
-                    <i class="fas fa-${icon}"></i>
-                    <div>${message}</div>
-                </div>
-            `;
-
-            $('#alertContainer').html(alertHtml);
-
-            // Auto-dismiss after 5 seconds
-            setTimeout(function() {
-                $('#alertContainer').fadeOut(function() {
-                    $(this).html('').show();
-                });
-            }, 5000);
-
-            // Scroll to top
-            $('html, body').animate({ scrollTop: 0 }, 300);
-        }
-
-        function updateStatusBanner(isAvailable, statusDescription) {
-            const banner = $('.status-banner');
-            const icon = $('.status-icon');
-            
-            if (isAvailable) {
-                banner.removeClass('inactive').addClass('active');
-                icon.removeClass('inactive').addClass('active')
-                    .html('<i class="fas fa-check-circle"></i>');
-                banner.find('h3').text('Current Status: ACTIVE');
-            } else {
-                banner.removeClass('active').addClass('inactive');
-                icon.removeClass('active').addClass('inactive')
-                    .html('<i class="fas fa-times-circle"></i>');
-                banner.find('h3').text('Current Status: DISABLED');
-            }
-            
-            banner.find('p').text(statusDescription);
-        }
+        console.log('? Script loaded successfully!');
     </script>
+
+    <footer class="app-footer">
+        <div class="footer-content">
+            <div class="footer-line guidance">
+                Developed under the guidance of <span class="footer-highlight">Dr. P. Penchala Prasad</span>, Associate Professor, CSE(DS), RGMCET
+            </div>
+            <div class="footer-line team">
+                With team <span class="footer-name">Mr. S. Md. Shahid Afrid</span> (23091A32D4) & <span class="footer-name">Ms. G. Veena</span> (23091A32H9)
+            </div>
+            <div class="footer-line copyright">
+                &copy; All Rights Reserved @@2025
+            </div>
+        </div>
+    </footer>
 </body>
 </html>

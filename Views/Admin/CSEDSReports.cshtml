@@ -674,10 +674,33 @@
                 exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exporting...';
                 exportBtn.disabled = true;
 
+                // Format data for export - create DisplayData array with formatted enrollment times
+                const displayData = currentReportData.map(item => ({
+                    studentRegdNumber: item.studentRegdNumber,
+                    studentName: item.studentName,
+                    studentEmail: item.studentEmail,
+                    studentYear: item.studentYear,
+                    subjectName: item.subjectName,
+                    facultyName: item.facultyName,
+                    semester: item.semester,
+                    enrollmentTimeFormatted: formatEnrollmentTime(item.enrolledAt) // Use formatted time
+                }));
+
                 const exportData = {
-                    reportData: currentReportData,
-                    selectedColumns: visibleColumns
+                    displayData: displayData, // Send pre-formatted data
+                    selectedColumns: {
+                        regdNumber: visibleColumns.regdNumber,
+                        studentName: visibleColumns.studentName,
+                        email: visibleColumns.email,
+                        year: visibleColumns.year,
+                        subject: visibleColumns.subject,
+                        faculty: visibleColumns.faculty,
+                        semester: visibleColumns.semester,
+                        enrollmentTime: visibleColumns.enrollmentTime
+                    }
                 };
+
+                console.log('Sending export data:', exportData);
 
                 const response = await fetch('@Url.Action("ExportCurrentReportExcel", "AdminReports")', {
                     method: 'POST',
@@ -731,10 +754,33 @@
                 exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exporting...';
                 exportBtn.disabled = true;
 
+                // Format data for export - create DisplayData array with formatted enrollment times
+                const displayData = currentReportData.map(item => ({
+                    studentRegdNumber: item.studentRegdNumber,
+                    studentName: item.studentName,
+                    studentEmail: item.studentEmail,
+                    studentYear: item.studentYear,
+                    subjectName: item.subjectName,
+                    facultyName: item.facultyName,
+                    semester: item.semester,
+                    enrollmentTimeFormatted: formatEnrollmentTime(item.enrolledAt) // Use formatted time
+                }));
+
                 const exportData = {
-                    reportData: currentReportData,
-                    selectedColumns: visibleColumns
+                    displayData: displayData, // Send pre-formatted data
+                    selectedColumns: {
+                        regdNumber: visibleColumns.regdNumber,
+                        studentName: visibleColumns.studentName,
+                        email: visibleColumns.email,
+                        year: visibleColumns.year,
+                        subject: visibleColumns.subject,
+                        faculty: visibleColumns.faculty,
+                        semester: visibleColumns.semester,
+                        enrollmentTime: visibleColumns.enrollmentTime
+                    }
                 };
+
+                console.log('Sending export data:', exportData);
 
                 const response = await fetch('@Url.Action("ExportCurrentReportPDF", "AdminReports")', {
                     method: 'POST',

@@ -96,7 +96,7 @@ builder.Services.AddAntiforgery(options =>
     
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax; // [FIX] Changed from Strict to Lax
-    options.HeaderName = "X-XSRF-TOKEN";
+    options.HeaderName = "RequestVerificationToken"; // Changed to match what we send from AJAX
 });
 
 // Register AppDbContext

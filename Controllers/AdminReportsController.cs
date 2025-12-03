@@ -42,11 +42,12 @@ namespace TutorLiveMentor.Controllers
 
             try
             {
+                var normalizedDept = DepartmentNormalizer.Normalize("CSE(DS)");
                 var faculty = await _context.AssignedSubjects
                     .Include(a => a.Faculty)
                     .Include(a => a.Subject)
                     .Where(a => a.SubjectId == subjectId && 
-                              (a.Subject.Department == "CSEDS" || a.Subject.Department == "CSE(DS)"))
+                              a.Subject.Department == normalizedDept)
                     .Select(a => new { 
                         FacultyId = a.Faculty.FacultyId, 
                         Name = a.Faculty.Name,
@@ -240,7 +241,8 @@ namespace TutorLiveMentor.Controllers
                         SubjectName = se.AssignedSubject.Subject.Name,
                         FacultyName = se.AssignedSubject.Faculty.Name,
                         FacultyEmail = se.AssignedSubject.Faculty.Email,
-                        Semester = se.AssignedSubject.Subject.Semester ?? ""
+                        Semester = se.AssignedSubject.Subject.Semester ?? "",
+                        EnrolledAt = se.EnrolledAt
                     })
                     .ToListAsync();
 
@@ -357,19 +359,19 @@ namespace TutorLiveMentor.Controllers
                     query = query.Where(se => se.AssignedSubject.Subject.Semester == filterObj.SelectedSemester);
 
                 var data = await query
-                    .OrderBy(se => se.EnrolledAt)
-                    .ThenBy(se => se.Student.FullName)
+                    .OrderBy(se => se.Student.FullName)
+                    .ThenBy(se => se.AssignedSubject.Subject.Name)
                     .Select(se => new
                     {
-                        StudentRegdNumber = se.Student.RegdNumber,
                         StudentName = se.Student.FullName,
+                        StudentRegdNumber = se.Student.RegdNumber,
                         StudentEmail = se.Student.Email,
                         StudentYear = se.Student.Year,
                         SubjectName = se.AssignedSubject.Subject.Name,
                         FacultyName = se.AssignedSubject.Faculty.Name,
                         FacultyEmail = se.AssignedSubject.Faculty.Email,
                         Semester = se.AssignedSubject.Subject.Semester ?? "",
-                        EnrolledAt = se.EnrolledAt  // Added this field for proper time formatting
+                        EnrolledAt = se.EnrolledAt
                     })
                     .ToListAsync();
 
@@ -426,9 +428,8 @@ namespace TutorLiveMentor.Controllers
                     table.AddCell(new PdfPCell(new Phrase(item.SubjectName ?? "", cellFont)) { Padding = 3 });
                     table.AddCell(new PdfPCell(new Phrase(item.FacultyName ?? "", cellFont)) { Padding = 3 });
                     table.AddCell(new PdfPCell(new Phrase(item.Semester ?? "", cellFont)) { Padding = 3 });
-                    // Convert UTC to local time and format with milliseconds
-                    var localTime = item.EnrolledAt.ToLocalTime();
-                    var timeStr = localTime.ToString("MM/dd/yyyy hh:mm:ss.fff tt");
+                    // Format datetime as-is (already in correct timezone)
+                    var timeStr = item.EnrolledAt.ToString("M/d/yyyy hh:mm:ss.fff tt");
                     table.AddCell(new PdfPCell(new Phrase(timeStr, cellFont)) { Padding = 3 });
                 }
 
@@ -762,13 +763,30 @@ namespace TutorLiveMentor.Controllers
 
             try
             {
-                if (request?.ReportData == null || request.ReportData.Count == 0)
+                // Use DisplayData if available (pre-formatted from web), otherwise fall back to ReportData
+                var displayData = request?.DisplayData;
+                if (displayData == null || displayData.Count == 0)
                 {
                     return BadRequest("No data to export");
                 }
 
-                var reportData = request.ReportData;
                 var columns = request.SelectedColumns ?? new ColumnSelection();
+
+                // Count selected columns
+                int columnCount = 0;
+                if (columns.RegdNumber) columnCount++;
+                if (columns.StudentName) columnCount++;
+                if (columns.Email) columnCount++;
+                if (columns.Year) columnCount++;
+                if (columns.Subject) columnCount++;
+                if (columns.Faculty) columnCount++;
+                if (columns.Semester) columnCount++;
+                if (columns.EnrollmentTime) columnCount++;
+
+                if (columnCount == 0)
+                {
+                    return BadRequest("No columns selected for export");
+                }
 
                 // Create Excel file
                 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
@@ -829,11 +847,11 @@ namespace TutorLiveMentor.Controllers
                     range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
                 }
 
-                // Data - FIXED ORDER: Registration Number FIRST, then Student Name
-                for (int i = 0; i < reportData.Count; i++)
+                // Data - Use pre-formatted display values exactly as shown on web
+                for (int i = 0; i < displayData.Count; i++)
                 {
                     var row = i + 2;
-                    var item = reportData[i];
+                    var item = displayData[i];
                     
                     if (columns.RegdNumber && columnMapping.ContainsKey("RegdNumber"))
                         worksheet.Cells[row, columnMapping["RegdNumber"]].Value = item.StudentRegdNumber;
@@ -858,10 +876,8 @@ namespace TutorLiveMentor.Controllers
                     
                     if (columns.EnrollmentTime && columnMapping.ContainsKey("EnrollmentTime"))
                     {
-                        // Convert UTC to local time and format with milliseconds
-                        var localTime = item.EnrolledAt.ToLocalTime();
-                        worksheet.Cells[row, columnMapping["EnrollmentTime"]].Value = 
-                            localTime.ToString("MM/dd/yyyy hh:mm:ss.fff tt");
+                        // Use pre-formatted time string exactly as displayed on web
+                        worksheet.Cells[row, columnMapping["EnrollmentTime"]].Value = item.EnrollmentTimeFormatted;
                     }
                 }
 
@@ -894,12 +910,13 @@ namespace TutorLiveMentor.Controllers
 
             try
             {
-                if (request?.ReportData == null || request.ReportData.Count == 0)
+                // Use DisplayData if available (pre-formatted from web), otherwise fall back to ReportData
+                var displayData = request?.DisplayData;
+                if (displayData == null || displayData.Count == 0)
                 {
                     return BadRequest("No data to export");
                 }
 
-                var reportData = request.ReportData;
                 var columns = request.SelectedColumns ?? new ColumnSelection();
 
                 // Count selected columns
@@ -975,9 +992,9 @@ namespace TutorLiveMentor.Controllers
                 if (columns.EnrollmentTime)
                     table.AddCell(new PdfPCell(new Phrase("Enrollment Time", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY, Padding = 5 });
 
-                // Data - FIXED ORDER: Registration Number FIRST
+                // Data - Use pre-formatted display values exactly as shown on web
                 var cellFont = FontFactory.GetFont(FontFactory.HELVETICA, 8);
-                foreach (var item in reportData)
+                foreach (var item in displayData)
                 {
                     if (columns.RegdNumber)
                         table.AddCell(new PdfPCell(new Phrase(item.StudentRegdNumber ?? "", cellFont)) { Padding = 3 });
@@ -995,10 +1012,8 @@ namespace TutorLiveMentor.Controllers
                         table.AddCell(new PdfPCell(new Phrase(item.Semester ?? "", cellFont)) { Padding = 3 });
                     if (columns.EnrollmentTime)
                     {
-                        // Convert UTC to local time and format with milliseconds
-                        var localTime = item.EnrolledAt.ToLocalTime();
-                        var timeStr = localTime.ToString("MM/dd/yyyy hh:mm:ss.fff tt");
-                        table.AddCell(new PdfPCell(new Phrase(timeStr, cellFont)) { Padding = 3 });
+                        // Use pre-formatted time string exactly as displayed on web
+                        table.AddCell(new PdfPCell(new Phrase(item.EnrollmentTimeFormatted ?? "", cellFont)) { Padding = 3 });
                     }
                 }
 
@@ -1006,7 +1021,7 @@ namespace TutorLiveMentor.Controllers
                 
                 // Summary
                 var summaryFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 12);
-                var summary = new Paragraph($"\nTotal Records: {reportData.Count}", summaryFont);
+                var summary = new Paragraph($"\nTotal Records: {displayData.Count}", summaryFont);
                 summary.Alignment = Element.ALIGN_CENTER;
                 summary.SpacingBefore = 20;
                 document.Add(summary);
@@ -1024,5 +1039,37 @@ namespace TutorLiveMentor.Controllers
                 return StatusCode(500, $"Error exporting to PDF: {ex.Message}");
             }
         }
+    }
+
+    // Request models for Admin reports
+    public class ExportRequest
+    {
+        public List<EnrollmentReportDto> ReportData { get; set; }
+        public List<AdminDisplayDataRow> DisplayData { get; set; } // Pre-formatted display data
+        public ColumnSelection SelectedColumns { get; set; }
+    }
+
+    public class AdminDisplayDataRow
+    {
+        public string StudentRegdNumber { get; set; }
+        public string StudentName { get; set; }
+        public string StudentEmail { get; set; }
+        public string StudentYear { get; set; }
+        public string SubjectName { get; set; }
+        public string FacultyName { get; set; }
+        public string Semester { get; set; }
+        public string EnrollmentTimeFormatted { get; set; }
+    }
+
+    public class ColumnSelection
+    {
+        public bool RegdNumber { get; set; } = true;
+        public bool StudentName { get; set; } = true;
+        public bool Email { get; set; } = true;
+        public bool Year { get; set; } = true;
+        public bool Subject { get; set; } = true;
+        public bool Faculty { get; set; } = true;
+        public bool Semester { get; set; } = true;
+        public bool EnrollmentTime { get; set; } = true;
     }
 }

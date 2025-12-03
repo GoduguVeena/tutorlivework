@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TutorLiveMentor.Models;
 using TutorLiveMentor.Services;
+using TutorLiveMentor.Helpers;
 using System.Linq;
 using System.Text;
+using Microsoft.AspNetCore.Antiforgery;
 
 namespace TutorLiveMentor.Controllers
 {
@@ -11,11 +13,13 @@ namespace TutorLiveMentor.Controllers
     {
         private readonly AppDbContext _context;
         private readonly SignalRService _signalRService;
+        private readonly IAntiforgery _antiforgery;
 
-        public AdminController(AppDbContext context, SignalRService signalRService)
+        public AdminController(AppDbContext context, SignalRService signalRService, IAntiforgery antiforgery)
         {
             _context = context;
             _signalRService = signalRService;
+            _antiforgery = antiforgery;
         }
 
         /// <summary>
@@ -139,33 +143,35 @@ namespace TutorLiveMentor.Controllers
             // Force session commit to ensure it persists
             await HttpContext.Session.CommitAsync();
 
-            // Get comprehensive CSE(DS) data - support both "CSE(DS)" and legacy "CSEDS"
+            // Normalize department for consistent queries
+            var normalizedCSEDS = DepartmentNormalizer.Normalize("CSE(DS)");
+            
             var viewModel = new CSEDSDashboardViewModel
             {
                 AdminEmail = HttpContext.Session.GetString("AdminEmail") ?? "",
                 AdminDepartment = department ?? "",
 
-                // Count only CSE(DS) department data - support both formats
+                // Count only CSE(DS) department data
                 CSEDSStudentsCount = await _context.Students
-                    .Where(s => s.Department == "CSE(DS)" || s.Department == "CSEDS")
+                    .Where(s => s.Department == normalizedCSEDS)
                     .CountAsync(),
 
                 CSEDSFacultyCount = await _context.Faculties
-                    .Where(f => f.Department == "CSE(DS)" || f.Department == "CSEDS")
+                    .Where(f => f.Department == normalizedCSEDS)
                     .CountAsync(),
 
                 CSEDSSubjectsCount = await _context.Subjects
-                    .Where(s => s.Department == "CSE(DS)" || s.Department == "CSEDS")
+                    .Where(s => s.Department == normalizedCSEDS)
                     .CountAsync(),
 
                 CSEDSEnrollmentsCount = await _context.StudentEnrollments
                     .Include(se => se.Student)
-                    .Where(se => se.Student.Department == "CSE(DS)" || se.Student.Department == "CSEDS")
+                    .Where(se => se.Student.Department == normalizedCSEDS)
                     .CountAsync(),
 
                 // Get recent CSE(DS) students
                 RecentStudents = await _context.Students
-                    .Where(s => s.Department == "CSE(DS)" || s.Department == "CSEDS")
+                    .Where(s => s.Department == normalizedCSEDS)
                     .OrderByDescending(s => s.Id)
                     .Take(5)
                     .Select(s => new StudentActivityDto
@@ -184,7 +190,7 @@ namespace TutorLiveMentor.Controllers
                         .ThenInclude(a => a.Subject)
                     .Include(se => se.AssignedSubject)
                         .ThenInclude(a => a.Faculty)
-                    .Where(se => se.Student.Department == "CSE(DS)" || se.Student.Department == "CSEDS")
+                    .Where(se => se.Student.Department == normalizedCSEDS)
                     .OrderByDescending(se => se.EnrolledAt)
                     .Take(10)
                     .Select(se => new EnrollmentActivityDto
@@ -198,13 +204,13 @@ namespace TutorLiveMentor.Controllers
 
                 // Get all department faculty for management
                 DepartmentFaculty = await _context.Faculties
-                    .Where(f => f.Department == "CSE(DS)" || f.Department == "CSEDS")
+                    .Where(f => f.Department == normalizedCSEDS)
                     .OrderBy(f => f.Name)
                     .ToListAsync(),
 
                 // Get all department subjects for management
                 DepartmentSubjects = await _context.Subjects
-                    .Where(s => s.Department == "CSE(DS)" || s.Department == "CSEDS")
+                    .Where(s => s.Department == normalizedCSEDS)
                     .OrderBy(s => s.Year)
                     .ThenBy(s => s.Name)
                     .ToListAsync(),
@@ -215,6 +221,52 @@ namespace TutorLiveMentor.Controllers
 
             Console.WriteLine("CSEDSDashboard loaded successfully");
             return View(viewModel);
+        }
+
+        /// <summary>
+        /// Get live dashboard statistics for AJAX refresh
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetDashboardStats()
+        {
+            var department = HttpContext.Session.GetString("AdminDepartment");
+            if (!IsCSEDSDepartment(department))
+                return Json(new { success = false, message = "Unauthorized" });
+
+            try
+            {
+                var normalizedDept = DepartmentNormalizer.Normalize("CSE(DS)");
+
+                var studentsCount = await _context.Students.Where(s => s.Department == normalizedDept)
+                    .CountAsync();
+
+                var facultyCount = await _context.Faculties
+                    .Where(f => f.Department == normalizedDept)
+                    .CountAsync();
+
+                var subjectsCount = await _context.Subjects.Where(s => s.Department == normalizedDept)
+                    .CountAsync();
+
+                var enrollmentsCount = await _context.StudentEnrollments
+                    .Include(se => se.Student)
+                    .Where(se => se.Student.Department == normalizedDept)
+                    .CountAsync();
+
+                return Json(new
+                {
+                    success = true,
+                    studentsCount,
+                    facultyCount,
+                    subjectsCount,
+                    enrollmentsCount,
+                    timestamp = DateTime.Now
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching dashboard stats: {ex.Message}");
+                return Json(new { success = false, message = "Error fetching statistics" });
+            }
         }
 
         /// <summary>
@@ -277,6 +329,8 @@ namespace TutorLiveMentor.Controllers
 
             try
             {
+                var normalizedDept = DepartmentNormalizer.Normalize("CSE(DS)");
+
                 // Verify subject belongs to CSE(DS) department
                 var subject = await _context.Subjects
                     .FirstOrDefaultAsync(s => s.SubjectId == request.SubjectId &&
@@ -308,7 +362,7 @@ namespace TutorLiveMentor.Controllers
                     {
                         FacultyId = facultyId,
                         SubjectId = request.SubjectId,
-                        Department = "CSE(DS)",  // Changed from "CSEDS"
+                        Department = normalizedDept,  // Uses normalized format
                         Year = subject.Year,
                         SelectedCount = 0
                     };
@@ -348,7 +402,7 @@ namespace TutorLiveMentor.Controllers
                     .Include(a => a.Subject)
                     .Include(a => a.Faculty)
                     .FirstOrDefaultAsync(a => a.AssignedSubjectId == request.AssignedSubjectId &&
-                                           (a.Subject.Department == "CSEDS" || a.Subject.Department == "CSE(DS)"));
+                                           (a.Subject.Department == "CSEEDS" || a.Subject.Department == "CSE(DS)"));
 
                 if (assignment == null)
                     return NotFound("Assignment not found");
@@ -499,9 +553,9 @@ namespace TutorLiveMentor.Controllers
         /// </summary>
         private async Task<List<SubjectDetailDto>> GetSubjectsWithAssignments()
         {
+            var normalizedDept = DepartmentNormalizer.Normalize("CSE(DS)");
             // First get all CSEDS subjects
-            var subjects = await _context.Subjects
-                .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+            var subjects = await _context.Subjects.Where(s => s.Department == normalizedDept)
                 .ToListAsync();
 
             var result = new List<SubjectDetailDto>();
@@ -511,7 +565,7 @@ namespace TutorLiveMentor.Controllers
                 var assignedFaculty = await _context.AssignedSubjects
                     .Include(a => a.Faculty)
                     .Where(a => a.SubjectId == s.SubjectId &&
-                              (a.Faculty.Department == "CSEDS" || a.Faculty.Department == "CSE(DS)"))
+                              (a.Faculty.Department == "CSE(DS)" || a.Faculty.Department == "CSEDS"))
                     .ToListAsync();
 
                 var totalEnrollments = 0;
@@ -556,9 +610,9 @@ namespace TutorLiveMentor.Controllers
         /// </summary>
         private async Task<List<SubjectFacultyMappingDto>> GetSubjectFacultyMappings()
         {
+            var normalizedDept = DepartmentNormalizer.Normalize("CSE(DS)");
             // First get all CSEDS subjects
-            var subjects = await _context.Subjects
-                .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
+            var subjects = await _context.Subjects.Where(s => s.Department == normalizedDept)
                 .ToListAsync();
 
             var result = new List<SubjectFacultyMappingDto>();
@@ -568,7 +622,7 @@ namespace TutorLiveMentor.Controllers
                 var assignedFaculty = await _context.AssignedSubjects
                     .Include(a => a.Faculty)
                     .Where(a => a.SubjectId == s.SubjectId &&
-                              (a.Faculty.Department == "CSEDS" || a.Faculty.Department == "CSE(DS)"))
+                              (a.Faculty.Department == "CSE(DS)" || a.Faculty.Department == "CSEDS"))
                     .ToListAsync();
 
                 var enrollmentCount = 0;
@@ -623,23 +677,23 @@ namespace TutorLiveMentor.Controllers
                 DatabaseStats = new
                 {
                     StudentsCount = await _context.Students
-                        .Where(s => s.Department == "CSEEDS" || s.Department == "CSE(DS)")
+                        .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
                         .CountAsync(),
                     FacultiesCount = await _context.Faculties
-                        .Where(f => f.Department == "CSEEDS" || f.Department == "CSE(DS)")
+                        .Where(f => f.Department == "CSEDS" || f.Department == "CSE(DS)")
                         .CountAsync(),
                     SubjectsCount = await _context.Subjects
-                        .Where(s => s.Department == "CSEEDS" || s.Department == "CSE(DS)")
+                        .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
                         .CountAsync(),
                     EnrollmentsCount = await _context.StudentEnrollments
                         .Include(se => se.Student)
-                        .Where(se => se.Student.Department == "CSEEDS" || se.Student.Department == "CSE(DS)")
+                        .Where(se => se.Student.Department == "CSEDS" || se.Student.Department == "CSE(DS)")
                         .CountAsync()
                 },
                 RecentActivity = new
                 {
                     RecentStudents = await _context.Students
-                        .Where(s => s.Department == "CSEEDS" || s.Department == "CSE(DS)")
+                        .Where(s => s.Department == "CSEDS" || s.Department == "CSE(DS)")
                         .OrderByDescending(s => s.Id)
                         .Take(5)
                         .Select(s => new { s.FullName, s.Email, s.Department, s.Year })
@@ -650,7 +704,7 @@ namespace TutorLiveMentor.Controllers
                             .ThenInclude(a => a.Subject)
                         .Include(se => se.AssignedSubject)
                             .ThenInclude(a => a.Faculty)
-                        .Where(se => se.Student.Department == "CSEEDS" || se.Student.Department == "CSE(DS)")
+                        .Where(se => se.Student.Department == "CSEDS" || se.Student.Department == "CSE(DS)")
                         .OrderByDescending(se => se.EnrolledAt)
                         .Take(10)
                         .Select(se => new
@@ -676,6 +730,8 @@ namespace TutorLiveMentor.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            var normalizedDept = DepartmentNormalizer.Normalize("CSE(DS)");
+
             var existingFaculty = await _context.Faculties.FirstOrDefaultAsync(f => f.Email == model.Email);
             if (existingFaculty != null)
                 return BadRequest("Faculty with this email already exists");
@@ -685,7 +741,7 @@ namespace TutorLiveMentor.Controllers
                 Name = model.Name,
                 Email = model.Email,
                 Password = model.Password,
-                Department = "CSE(DS)"  // Changed from "CSEDS"
+                Department = normalizedDept  // Uses normalized format
             };
 
             _context.Faculties.Add(faculty);
@@ -699,7 +755,7 @@ namespace TutorLiveMentor.Controllers
                     {
                         FacultyId = faculty.FacultyId,
                         SubjectId = subjectId,
-                        Department = "CSE(DS)",  // Changed from "CSEDS"
+                        Department = normalizedDept,  // Uses normalized format
                         Year = 1,
                         SelectedCount = 0
                     };
@@ -709,6 +765,9 @@ namespace TutorLiveMentor.Controllers
             }
 
             await _signalRService.NotifyUserActivity(HttpContext.Session.GetString("AdminEmail") ?? "", "Admin", "Faculty Added", $"New CSE(DS) faculty member {faculty.Name} added to the system");
+
+            // Broadcast dashboard stats update
+            await BroadcastDashboardUpdate($"Faculty '{faculty.Name}' added");
 
             return Ok(new { success = true, message = "Faculty added successfully" });
         }
@@ -816,34 +875,77 @@ namespace TutorLiveMentor.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> DeleteCSEDSFaculty([FromBody] dynamic data)
+        public async Task<IActionResult> DeleteCSEDSFaculty([FromBody] DeleteFacultyRequest request)
         {
-            var department = HttpContext.Session.GetString("AdminDepartment");
-            if (!IsCSEDSDepartment(department))
-                return Unauthorized();
+            try
+            {
+                Console.WriteLine($"[DELETE] Starting delete for FacultyId: {request?.FacultyId}");
+                
+                var department = HttpContext.Session.GetString("AdminDepartment");
+                if (!IsCSEDSDepartment(department))
+                {
+                    Console.WriteLine("[DELETE] Unauthorized - Not CSEDS department");
+                    return Unauthorized(new { success = false, message = "Unauthorized access" });
+                }
 
-            var facultyId = (int)data.facultyId;
-            var faculty = await _context.Faculties
-                .Include(f => f.AssignedSubjects)
-                    .ThenInclude(a => a.Enrollments)
-                .FirstOrDefaultAsync(f => f.FacultyId == facultyId &&
-                                        (f.Department == "CSEDS" || f.Department == "CSE(DS)"));
+                if (request == null || request.FacultyId <= 0)
+                {
+                    Console.WriteLine("[DELETE] Invalid request - FacultyId is null or invalid");
+                    return BadRequest(new { success = false, message = "Invalid faculty ID" });
+                }
 
-            if (faculty == null)
-                return NotFound();
+                var facultyId = request.FacultyId;
+                Console.WriteLine($"[DELETE] Looking for faculty with ID: {facultyId}");
+                
+                var faculty = await _context.Faculties
+                    .Include(f => f.AssignedSubjects)
+                        .ThenInclude(a => a.Enrollments)
+                    .FirstOrDefaultAsync(f => f.FacultyId == facultyId &&
+                                            (f.Department == "CSEDS" || f.Department == "CSE(DS)"));
 
-            var hasEnrollments = faculty.AssignedSubjects?.Any(a => a.Enrollments?.Any() == true) == true;
-            if (hasEnrollments)
-                return BadRequest(new { success = false, message = "Cannot delete faculty with active student enrollments" });
+                if (faculty == null)
+                {
+                    Console.WriteLine($"[DELETE] Faculty not found with ID: {facultyId}");
+                    return NotFound(new { success = false, message = "Faculty member not found" });
+                }
 
-            if (faculty.AssignedSubjects != null)
-                _context.AssignedSubjects.RemoveRange(faculty.AssignedSubjects);
+                Console.WriteLine($"[DELETE] Found faculty: {faculty.Name}");
 
-            _context.Faculties.Remove(faculty);
-            await _context.SaveChangesAsync();
-            await _signalRService.NotifyUserActivity(HttpContext.Session.GetString("AdminEmail") ?? "", "Admin", "Faculty Deleted", $"CSEDS faculty member {faculty.Name} has been deleted from the system");
+                var hasEnrollments = faculty.AssignedSubjects?.Any(a => a.Enrollments?.Any() == true) == true;
+                if (hasEnrollments)
+                {
+                    Console.WriteLine("[DELETE] Cannot delete - Faculty has active enrollments");
+                    return BadRequest(new { success = false, message = "Cannot delete faculty with active student enrollments" });
+                }
 
-            return Ok(new { success = true, message = "Faculty deleted successfully" });
+                Console.WriteLine($"[DELETE] Removing {faculty.AssignedSubjects?.Count ?? 0} assigned subjects");
+                if (faculty.AssignedSubjects != null && faculty.AssignedSubjects.Any())
+                    _context.AssignedSubjects.RemoveRange(faculty.AssignedSubjects);
+
+                Console.WriteLine("[DELETE] Removing faculty from database");
+                _context.Faculties.Remove(faculty);
+                await _context.SaveChangesAsync();
+                
+                Console.WriteLine("[DELETE] Faculty deleted successfully");
+
+                await _signalRService.NotifyUserActivity(
+                    HttpContext.Session.GetString("AdminEmail") ?? "", 
+                    "Admin", 
+                    "Faculty Deleted", 
+                    $"CSE(DS) faculty member {faculty.Name} has been deleted from the system"
+                );
+
+                // Broadcast dashboard stats update
+                await BroadcastDashboardUpdate($"Faculty '{faculty.Name}' deleted");
+
+                return Ok(new { success = true, message = "Faculty deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DELETE] Error: {ex.Message}");
+                Console.WriteLine($"[DELETE] Stack trace: {ex.StackTrace}");
+                return BadRequest(new { success = false, message = $"Error deleting faculty: {ex.Message}" });
+            }
         }
 
         [HttpGet]
@@ -897,7 +999,7 @@ namespace TutorLiveMentor.Controllers
                     if (model.SubjectType == "Core")
                     {
                         // Default for Core subjects based on year
-                        maxEnrollments = model.Year == 2 ? 60 : 70;
+                        maxEnrollments = (model.Year == 2) ? 60 : 70;
                     }
                     else
                     {
@@ -909,7 +1011,7 @@ namespace TutorLiveMentor.Controllers
                 var subject = new Subject
                 {
                     Name = model.Name,
-                    Department = "CSE(DS)",
+                    Department = "CSEDS",
                     Year = model.Year,
                     Semester = model.Semester,
                     SemesterStartDate = model.SemesterStartDate,
@@ -927,6 +1029,9 @@ namespace TutorLiveMentor.Controllers
                     "Subject Added",
                     $"New CSE(DS) subject added: {subject.Name} (Year {subject.Year}, {subject.Semester}, Type: {subject.SubjectType}, Max: {subject.MaxEnrollments ?? 0})"
                 );
+
+                // Broadcast dashboard stats update
+                await BroadcastDashboardUpdate($"Subject '{subject.Name}' added");
 
                 return Json(new { success = true, message = "Subject added successfully" });
             }
@@ -977,7 +1082,7 @@ namespace TutorLiveMentor.Controllers
                 {
                     if (model.SubjectType == "Core")
                     {
-                        maxEnrollments = model.Year == 2 ? 60 : 70;
+                        maxEnrollments = (model.Year == 2) ? 60 : 70;
                     }
                     else
                     {
@@ -1015,7 +1120,7 @@ namespace TutorLiveMentor.Controllers
         /// Delete CSEDS subject
         /// </summary>
         [HttpPost]
-        public async Task<IActionResult> DeleteCSEDSSubject([FromBody] dynamic data)
+        public async Task<IActionResult> DeleteCSEDSSubject([FromBody] DeleteSubjectRequest request)
         {
             var department = HttpContext.Session.GetString("AdminDepartment");
             if (!IsCSEDSDepartment(department))
@@ -1023,36 +1128,80 @@ namespace TutorLiveMentor.Controllers
 
             try
             {
-                int subjectId = (int)data.subjectId;
-                
                 var subject = await _context.Subjects
                     .Include(s => s.AssignedSubjects)
                         .ThenInclude(a => a.Enrollments)
-                    .FirstOrDefaultAsync(s => s.SubjectId == subjectId &&
-                                            (s.Department == "CSEDS" || s.Department == "CSE(DS)"));
+                            .ThenInclude(e => e.Student)
+                    .FirstOrDefaultAsync(s => s.SubjectId == request.SubjectId &&
+                                            (s.Department == "CSEEDS" || s.Department == "CSE(DS)"));
 
                 if (subject == null)
                     return Json(new { success = false, message = "Subject not found" });
 
-                // Check if there are any enrollments
-                var hasEnrollments = subject.AssignedSubjects?.Any(a => a.Enrollments?.Any() == true) == true;
-                if (hasEnrollments)
-                    return Json(new { success = false, message = "Cannot delete subject with active student enrollments. Please remove all enrollments first." });
+                // Count total enrollments for logging
+                int totalEnrollments = subject.AssignedSubjects?
+                    .SelectMany(a => a.Enrollments ?? new List<StudentEnrollment>())
+                    .Count() ?? 0;
 
-                // Delete assigned subjects first
+                // Get all affected students and clean up their SelectedSubject field
+                var affectedStudents = subject.AssignedSubjects?
+                    .SelectMany(a => a.Enrollments ?? new List<StudentEnrollment>())
+                    .Select(e => e.Student)
+                    .Distinct()
+                    .ToList();
+
+                if (affectedStudents != null && affectedStudents.Any())
+                {
+                    foreach (var student in affectedStudents)
+                    {
+                        if (!string.IsNullOrEmpty(student.SelectedSubject))
+                        {
+                            var selectedSubjects = student.SelectedSubject
+                                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                .Select(s => s.Trim())
+                                .Where(s => !s.Equals(subject.Name, StringComparison.OrdinalIgnoreCase))
+                                .ToList();
+                        
+                            student.SelectedSubject = string.Join(", ", selectedSubjects);
+                        }
+                    }
+                }
+
+                // Delete all enrollments first (cascade delete)
                 if (subject.AssignedSubjects != null && subject.AssignedSubjects.Any())
+                {
+                    foreach (var assignedSubject in subject.AssignedSubjects)
+                    {
+                        if (assignedSubject.Enrollments != null && assignedSubject.Enrollments.Any())
+                        {
+                            _context.StudentEnrollments.RemoveRange(assignedSubject.Enrollments);
+                        }
+                    }
+                    
+                    // Delete assigned subjects
                     _context.AssignedSubjects.RemoveRange(subject.AssignedSubjects);
+                }
 
                 // Delete the subject
                 _context.Subjects.Remove(subject);
                 await _context.SaveChangesAsync();
 
+                // Build notification message
+                string notificationMessage = $"CSEDS subject deleted: {subject.Name} (Year {subject.Year}, {subject.Semester})";
+                if (totalEnrollments > 0)
+                {
+                    notificationMessage += $" - {totalEnrollments} student enrollment(s) removed";
+                }
+
                 await _signalRService.NotifyUserActivity(
                     HttpContext.Session.GetString("AdminEmail") ?? "",
                     "Admin",
                     "Subject Deleted",
-                    $"CSEDS subject deleted: {subject.Name} (Year {subject.Year}, {subject.Semester})"
+                    notificationMessage
                 );
+
+                // Broadcast dashboard stats update
+                await BroadcastDashboardUpdate($"Subject '{subject.Name}' deleted");
 
                 return Json(new { success = true, message = "Subject deleted successfully" });
             }
@@ -1312,4 +1461,101 @@ namespace TutorLiveMentor.Controllers
     {
         public int AssignedSubjectId { get; set; }
     }
+
+    /// <summary>
+    /// Request model for deleting subject
+    /// </summary>
+    public class DeleteSubjectRequest
+    {
+        public int SubjectId { get; set; }
+    }
+
+    /// <summary>
+    /// Request model for deleting faculty
+    /// </summary>
+    public class DeleteFacultyRequest
+    {
+        public int FacultyId { get; set; }
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

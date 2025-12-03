@@ -4,11 +4,12 @@
 }
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8" />
     <title>TutorLiveMentor</title>
     <link href="https://fonts.googleapis.com/css?family=Montserrat:700,400&display=swap" rel="stylesheet">
+
     <style>
         :root {
             --royal-blue: #274060;
@@ -24,33 +25,33 @@
             margin: 0;
             padding: 0;
             font-family: 'Montserrat', Arial, sans-serif;
-            background: linear-gradient(rgba(249, 250, 242, 0.15), rgba(255, 200, 87, 0.10)), /* cream to gold */
-            url('@Url.Content("~/images/RGMCET-BACKGROUND.jpg")') center center/cover no-repeat fixed;
+            background: linear-gradient(rgba(249, 250, 242, 0.15), rgba(255, 200, 87, 0.10)),
+                url('@Url.Content("~/images/RGMCET-BACKGROUND.jpg")') center center/cover no-repeat fixed;
             position: relative;
         }
 
-            body::before {
-                content: "";
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                z-index: 0;
-                display: block;
-                background: linear-gradient(135deg, var(--cream) 60%, var(--warm-gold) 100%);
-                opacity: 0.20;
-                pointer-events: none;
-            }
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 0;
+            display: block;
+            background: linear-gradient(135deg, var(--cream) 60%, var(--warm-gold) 100%);
+            opacity: 0.20;
+            pointer-events: none;
+        }
 
         .glass-card {
             background: rgba(249,250,242,0.92);
             box-shadow: 0 16px 48px var(--card-shadow);
             border-radius: 26px;
-            padding: 62px 44px 44px 44px;
+            padding: 40px 44px 44px 44px;
             text-align: center;
             backdrop-filter: blur(12px);
-            max-width: 520px;
+            max-width: 680px;
             width: 96vw;
             margin: 90px auto 0 auto;
             position: relative;
@@ -58,10 +59,27 @@
             border: 2px solid var(--slate);
         }
 
+        /* NEW: Logos + Title Row */
+        .logo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .college-title {
+            font-size: 1.35em;
+            font-weight: 700;
+            color: var(--royal-blue);
+            text-align: center;
+            flex: 1; /* pushes title to center */
+            line-height: 1.3;
+        }
+
         .logo {
-            width: 86px;
-            height: 86px;
-            margin-bottom: 14px;
+            width: 88px;
+            height: 88px;
             filter: drop-shadow(2px 6px 18px var(--royal-blue));
             object-fit: contain;
             background: var(--cream);
@@ -70,7 +88,7 @@
         }
 
         h1 {
-            font-size: 2.18em;
+            font-size: 2.1em;
             font-weight: 700;
             color: var(--royal-blue);
             margin-top: 12px;
@@ -100,7 +118,7 @@
             outline: none;
             text-decoration: none;
             border: 2px solid var(--slate);
-            transition: box-shadow 0.2s, background 0.22s, transform 0.16s, color 0.18s;
+            transition: 0.22s;
             color: #fff;
             min-width: 140px;
             justify-content: center;
@@ -112,10 +130,7 @@
 
         .glass-btn.student:hover {
             box-shadow: 0 16px 32px rgba(39, 64, 96, 0.4);
-            background: linear-gradient(90deg, var(--warm-gold) 62%, var(--royal-blue) 100%);
-            color: var(--royal-blue);
             transform: translateY(-4px) scale(1.035);
-            border: 2px solid var(--royal-blue);
         }
 
         .glass-btn.faculty {
@@ -123,11 +138,8 @@
         }
 
         .glass-btn.faculty:hover {
-            box-shadow: 0 16px 32px rgba(111, 66, 193, 0.4);
-            background: linear-gradient(90deg, var(--warm-gold) 62%, #6f42c1 100%);
-            color: var(--royal-blue);
+            box-shadow: 0 16px 32px rgba(111, 66, 193,0.4);
             transform: translateY(-4px) scale(1.035);
-            border: 2px solid #6f42c1;
         }
 
         .glass-btn.admin {
@@ -135,77 +147,104 @@
         }
 
         .glass-btn.admin:hover {
-            box-shadow: 0 16px 32px rgba(253, 126, 20, 0.4);
-            background: linear-gradient(90deg, var(--warm-gold) 62%, var(--admin-orange) 100%);
-            color: var(--royal-blue);
+            box-shadow: 0 16px 32px rgba(253, 126, 20,0.4);
             transform: translateY(-4px) scale(1.035);
-            border: 2px solid var(--admin-orange);
         }
 
-        .footer {
-            margin-top: 31px;
-            color: #464646;
-            font-size: 1em;
-        }
-
-            .footer a {
-                color: var(--royal-blue);
-                text-decoration: underline;
-            }
-
-        @@media (max-width: 768px) {
-            .button-group {
-                flex-direction: column;
-                gap: 18px;
-                align-items: center;
-            }
-
+        media (max-width: 768px) {
             .glass-card {
-                margin: 40px auto 0 auto;
-                padding: 40px 22px 32px 22px;
-                max-width: 480px;
+                padding: 32px 22px;
+            }
+
+            .logo-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .college-title {
+                order: -1; /* title comes first */
+                font-size: 1.15em;
             }
 
             h1 {
                 font-size: 1.45em;
             }
+        }
 
-            .glass-btn {
-                min-width: 200px;
+        media (max-width: 480px) {
+            .logo {
+                width: 70px;
+                height: 70px;
+            }
+
+            .college-title {
+                font-size: 1.1em;
             }
         }
 
-        @@media (max-width: 480px) {
-            .button-group {
-                gap: 15px;
-            }
-            
-            .glass-btn {
-                font-size: 1em;
-                padding: 12px 28px;
-                min-width: 180px;
-            }
+        /* Footer */
+        .app-footer {
+            background: rgba(249,250,242,0.95);
+            backdrop-filter: blur(12px);
+            border-top: 3px solid var(--slate);
+            box-shadow: 0 -8px 32px rgba(39,64,96,0.13);
+            padding: 30px 20px;
+            margin-top: 50px;
+            text-align: center;
+            color: #274060;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .footer-line {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .footer-highlight,
+        .footer-name {
+            font-weight: 700;
+            color: #274060;
         }
     </style>
 </head>
+
 <body>
+
     <div class="glass-card">
-        <img src="~/images/RGMCET.jpg" alt="RGMCET Logo" class="logo" />
-        <h1>Welcome to the <br>TutorLive-Faculty Selection Website</h1>
+
+        <!-- NEW LOGO + TITLE ROW -->
+        <div class="logo-header">
+            <img src="@Url.Content("~/images/RGMCET.jpg")" class="logo" />
+
+            <div class="college-title">
+                RGM College of Engineering & Technology (Autonomous)
+            </div>
+
+            <img src="@Url.Content("~/images/DataScience-Logo.jpg")" class="logo" />
+        </div>
+
+        <h1>Welcome to the <br />TutorLive-Faculty Selection Website</h1>
+
         <div class="button-group">
-            <a class="glass-btn student" href="@Url.Action("Index", "Student")">
-                <span>Student</span>
-            </a>
-            <a class="glass-btn faculty" href="@Url.Action("Login", "Faculty")">
-                <span>Faculty</span>
-            </a>
-            <a class="glass-btn admin" href="@Url.Action("Login", "Admin")">
-                <span>Admin</span>
-            </a>
+            <a class="glass-btn student" href="@Url.Action("Index", "Student")">Student</a>
+            <a class="glass-btn faculty" href="@Url.Action("Login", "Faculty")">Faculty</a>
+            <a class="glass-btn admin" href="@Url.Action("Login", "Admin")">Admin</a>
         </div>
-        <div class="footer">
-            &copy; 2025 - TutorLiveMentor - RGMCET | <a href="#">Privacy</a>
-        </div>
+
     </div>
+
+    <footer class="app-footer">
+        <div class="footer-line">
+            Developed under the guidance of <span class="footer-highlight">Dr. P. Penchala Prasad</span>, Associate Professor, CSE(DS), RGMCET
+        </div>
+        <div class="footer-line">
+            With team <span class="footer-name">Mr. S. Md. Shahid Afrid</span> (23091A32D4) &
+            <span class="footer-name">Ms. G. Veena</span> (23091A32H9)
+        </div>
+        <div class="footer-line">
+          <strong>&copy; All Rights Reserved @@2025 </strong>
+        </div>
+    </footer>
+
 </body>
 </html>

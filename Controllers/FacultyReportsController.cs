@@ -87,12 +87,13 @@ namespace TutorLiveMentor.Controllers
 
             try
             {
-                if (request?.ReportData == null || request.ReportData.Count == 0)
+                // Use DisplayData if available (pre-formatted from web), otherwise fall back to ReportData
+                var displayData = request?.DisplayData;
+                if (displayData == null || displayData.Count == 0)
                 {
                     return BadRequest("No data to export");
                 }
 
-                var reportData = request.ReportData;
                 var columns = request.SelectedColumns ?? new FacultyColumnSelection();
 
                 // Create Excel file
@@ -145,11 +146,11 @@ namespace TutorLiveMentor.Controllers
                     range.Style.Font.Color.SetColor(System.Drawing.Color.White);
                 }
 
-                // Data - FIXED ORDER: Registration Number FIRST, then Student Name
-                for (int i = 0; i < reportData.Count; i++)
+                // Data - Use pre-formatted display values exactly as shown on web
+                for (int i = 0; i < displayData.Count; i++)
                 {
                     var row = i + 2;
-                    var item = reportData[i];
+                    var item = displayData[i];
                     
                     if (columns.RegdNumber && columnMapping.ContainsKey("RegdNumber"))
                         worksheet.Cells[row, columnMapping["RegdNumber"]].Value = item.StudentRegdNumber;
@@ -164,14 +165,12 @@ namespace TutorLiveMentor.Controllers
                         worksheet.Cells[row, columnMapping["Year"]].Value = item.StudentYear;
                     
                     if (columns.Department && columnMapping.ContainsKey("Department"))
-                        worksheet.Cells[row, columnMapping["Department"]].Value = item.StudentYear; // Department can be derived from year
+                        worksheet.Cells[row, columnMapping["Department"]].Value = item.Department;
                     
                     if (columns.EnrollmentTime && columnMapping.ContainsKey("EnrollmentTime"))
                     {
-                        // Convert UTC to local time and format with milliseconds
-                        var localTime = item.EnrolledAt.ToLocalTime();
-                        worksheet.Cells[row, columnMapping["EnrollmentTime"]].Value = 
-                            localTime.ToString("MM/dd/yyyy hh:mm:ss.fff tt");
+                        // Use pre-formatted time string exactly as displayed on web
+                        worksheet.Cells[row, columnMapping["EnrollmentTime"]].Value = item.EnrollmentTimeFormatted;
                     }
                 }
 
@@ -179,9 +178,9 @@ namespace TutorLiveMentor.Controllers
                 worksheet.Cells.AutoFitColumns();
 
                 // Add summary row
-                int summaryRow = reportData.Count + 3;
+                int summaryRow = displayData.Count + 3;
                 worksheet.Cells[summaryRow, 1].Value = "Total Students:";
-                worksheet.Cells[summaryRow, 2].Value = reportData.Count;
+                worksheet.Cells[summaryRow, 2].Value = displayData.Count;
                 worksheet.Cells[summaryRow, 1, summaryRow, 2].Style.Font.Bold = true;
 
                 // Generate file
@@ -210,12 +209,13 @@ namespace TutorLiveMentor.Controllers
 
             try
             {
-                if (request?.ReportData == null || request.ReportData.Count == 0)
+                // Use DisplayData if available (pre-formatted from web), otherwise fall back to ReportData
+                var displayData = request?.DisplayData;
+                if (displayData == null || displayData.Count == 0)
                 {
                     return BadRequest("No data to export");
                 }
 
-                var reportData = request.ReportData;
                 var columns = request.SelectedColumns ?? new FacultyColumnSelection();
 
                 // Count selected columns
@@ -299,9 +299,9 @@ namespace TutorLiveMentor.Controllers
                     table.AddCell(new PdfPCell(new Phrase("Enrollment Time", headerFont)) 
                     { BackgroundColor = headerColor, Padding = 5, HorizontalAlignment = Element.ALIGN_CENTER });
 
-                // Data - FIXED ORDER: Registration Number FIRST
+                // Data - Use pre-formatted display values exactly as shown on web
                 var cellFont = FontFactory.GetFont(FontFactory.HELVETICA, 8);
-                foreach (var item in reportData)
+                foreach (var item in displayData)
                 {
                     if (columns.RegdNumber)
                         table.AddCell(new PdfPCell(new Phrase(item.StudentRegdNumber ?? "", cellFont)) { Padding = 3 });
@@ -312,13 +312,11 @@ namespace TutorLiveMentor.Controllers
                     if (columns.Year)
                         table.AddCell(new PdfPCell(new Phrase(item.StudentYear ?? "", cellFont)) { Padding = 3 });
                     if (columns.Department)
-                        table.AddCell(new PdfPCell(new Phrase(item.StudentYear ?? "", cellFont)) { Padding = 3 });
+                        table.AddCell(new PdfPCell(new Phrase(item.Department ?? "", cellFont)) { Padding = 3 });
                     if (columns.EnrollmentTime)
                     {
-                        // Convert UTC to local time and format with milliseconds
-                        var localTime = item.EnrolledAt.ToLocalTime();
-                        var timeStr = localTime.ToString("MM/dd/yyyy hh:mm:ss.fff tt");
-                        table.AddCell(new PdfPCell(new Phrase(timeStr, cellFont)) { Padding = 3 });
+                        // Use pre-formatted time string exactly as displayed on web
+                        table.AddCell(new PdfPCell(new Phrase(item.EnrollmentTimeFormatted ?? "", cellFont)) { Padding = 3 });
                     }
                 }
 
@@ -326,7 +324,7 @@ namespace TutorLiveMentor.Controllers
                 
                 // Summary
                 var summaryFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 12);
-                var summary = new Paragraph($"\nTotal Students Enrolled: {reportData.Count}", summaryFont);
+                var summary = new Paragraph($"\nTotal Students Enrolled: {displayData.Count}", summaryFont);
                 summary.Alignment = Element.ALIGN_CENTER;
                 summary.SpacingBefore = 20;
                 document.Add(summary);
@@ -356,7 +354,18 @@ namespace TutorLiveMentor.Controllers
     {
         public string SubjectName { get; set; }
         public List<EnrollmentReportDto> ReportData { get; set; }
+        public List<DisplayDataRow> DisplayData { get; set; } // Pre-formatted display data
         public FacultyColumnSelection SelectedColumns { get; set; }
+    }
+
+    public class DisplayDataRow
+    {
+        public string StudentRegdNumber { get; set; }
+        public string StudentName { get; set; }
+        public string StudentEmail { get; set; }
+        public string StudentYear { get; set; }
+        public string Department { get; set; }
+        public string EnrollmentTimeFormatted { get; set; }
     }
 
     public class FacultyColumnSelection
